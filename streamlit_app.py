@@ -322,7 +322,7 @@ if run_analysis:
 
     if not df_fundamental_completo.empty and 'Piotroski_F_Score' in df_fundamental_completo.columns and min_piotroski_score > 0:
         ativos_filtrados_piotroski = df_fundamental_completo[df_fundamental_completo['Piotroski_F_Score'] >= min_piotroski_score].index.tolist()
-        if ativos_filtrados_piotroski:
+        if ativos_filtrados_piotroski and len(ativos_filtrados_piotroski) > 0:
             st.info(f"Ativos após filtro Piotroski (>= {min_piotroski_score}): {', '.join(ativos_filtrados_piotroski)}")
             ativos_para_otimizar = [a for a in ativos_filtrados_piotroski if coluna_tem_dados_validos(df_retornos_historicos, a)]
             if not ativos_para_otimizar:
