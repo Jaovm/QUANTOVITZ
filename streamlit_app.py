@@ -109,6 +109,17 @@ tolerancia_peso_atual = st.sidebar.slider(
     help="Usado se 'Como restrição de intervalo' for selecionado. Ex: 20% -> peso_atual*0.8 a peso_atual*1.2."
 )
 
+# --- Filtro Quant Value para novo aporte (integração com Markowitz) ---
+st.sidebar.subheader("Filtro Quant Value para Novo Aporte")
+top_n_quant_value = st.sidebar.number_input(
+    "Comprar apenas os Top N ativos em Quant Value Score (0 = todos)", 
+    min_value=0, max_value=20, value=0
+)
+min_quant_value = st.sidebar.slider(
+    "Nota mínima Quant Value Score para compra (0 = sem filtro)", 
+    min_value=0.0, max_value=1.0, value=0.0, step=0.01
+)
+
 run_analysis = st.sidebar.button("Executar Análise Avançada")
 
 def plot_efficient_frontier_comparative(fronteiras_data, portfolios_otimizados, carteira_atual_metricas=None):
@@ -323,7 +334,7 @@ if run_analysis:
             ativos=ativos_validos_mc,
             df_retornos_historicos=df_retornos_mc,
             taxa_livre_risco=taxa_livre_risco_input,
-            num_portfolios_simulados=10000
+            num_portfolios_simulados=50000
         )
         if portfolio_markowitz_mc:
             carteiras_comparativo_lista.append({
@@ -343,98 +354,4 @@ if run_analysis:
         for ativo_o in ativos_para_otimizar:
             restricoes_pesos_otim[ativo_o] = (min_aloc_global, max_aloc_global)
         pesos_iniciais_otim = None
-        if manter_pesos_atuais_opcao != "Não considerar" and pesos_carteira_decimal:
-            pesos_atuais_para_otim = {a: pesos_carteira_decimal.get(a, 0.0) for a in ativos_para_otimizar}
-            soma_pesos_atuais_otim = sum(pesos_atuais_para_otim.values())
-            if np.isclose(soma_pesos_atuais_otim, 1.0) and soma_pesos_atuais_otim > 0:
-                pesos_iniciais_otim = pesos_atuais_para_otim
-            elif soma_pesos_atuais_otim > 0:
-                pesos_iniciais_otim = {a: p/soma_pesos_atuais_otim for a,p in pesos_atuais_para_otim.items()}
-                st.info(f"Pesos atuais para {manter_pesos_atuais_opcao} foram normalizados para os ativos em otimização.")
-            else:
-                st.info(f"Não foi possível usar pesos atuais como ponto de partida (soma zero ou vazios para ativos em otimização). Usando pesos iguais.")
-            if manter_pesos_atuais_opcao == "Como restrição inferior aproximada":
-                for ativo_o, peso_atual_o in pesos_atuais_para_otim.items():
-                    restricoes_pesos_otim[ativo_o] = (max(min_aloc_global, peso_atual_o * (1-tolerancia_peso_atual*2) ), restricoes_pesos_otim[ativo_o][1])
-            elif manter_pesos_atuais_opcao == "Como restrição de intervalo":
-                for ativo_o, peso_atual_o in pesos_atuais_para_otim.items():
-                    min_restrito = max(0.0, peso_atual_o * (1 - tolerancia_peso_atual/100.0))
-                    max_restrito = min(1.0, peso_atual_o * (1 + tolerancia_peso_atual/100.0))
-                    restricoes_pesos_otim[ativo_o] = (max(min_aloc_global, min_restrito), min(max_aloc_global, max_restrito))
-        df_fund_otim = None
-        if not df_fundamental_completo.empty:
-            df_fund_otim = df_fundamental_completo.reindex(ativos_para_otimizar).dropna(subset=['ticker'])
-            if df_fund_otim.empty:
-                st.warning("Dados fundamentalistas não encontrados para os ativos selecionados para otimização. Otimização avançada usará apenas dados históricos.")
-                df_fund_otim = None
-        portfolio_avancado, _ = otimizar_portfolio_scipy(
-            ativos=ativos_para_otimizar,
-            df_retornos_historicos=df_retornos_otim,
-            df_fundamental_completo=df_fund_otim, 
-            fama_french_factors=fama_french_factors_df if not fama_french_factors_df.empty else None,
-            taxa_livre_risco=taxa_livre_risco_input,
-            pesos_atuais=pesos_iniciais_otim if manter_pesos_atuais_opcao == "Como ponto de partida" else None,
-            restricoes_pesos_min_max=restricoes_pesos_otim,
-            objetivo='max_sharpe'
-        )
-        if portfolio_avancado:
-            carteiras_comparativo_lista.append({
-                'Nome': 'Otimizada Avançada (Quant+Econo)',
-                'Retorno Esperado (%)': portfolio_avancado['retorno_esperado'] * 100,
-                'Volatilidade (%)': portfolio_avancado['volatilidade'] * 100,
-                'Sharpe Ratio': portfolio_avancado['sharpe_ratio'],
-                'Dados': { 'Pesos': portfolio_avancado['pesos'] }
-            })
-            portfolios_otimizados_plot_data.append({'nome': 'Avançada Quant+Econo', 'data': {**portfolio_avancado, 'Pesos': portfolio_avancado['pesos']}})
-            st.subheader("Detalhes da Otimização Avançada")
-            if portfolio_avancado.get('garch_volatilities'):
-                st.write("Volatilidades Anualizadas GARCH (estimadas):")
-                st.json({k: f"{v*100:.2f}%" for k,v in portfolio_avancado['garch_volatilities'].items() if pd.notna(v)})
-            if portfolio_avancado.get('alphas'):
-                st.write("Alphas Anualizados (vs Fama-French 4 Fatores Proxy):")
-                st.json({k: f"{v*100:.2f}%" for k,v in portfolio_avancado['alphas'].items() if pd.notna(v)})
-            if portfolio_avancado.get('arima_forecasts'):
-                st.write("Previsões de Retorno Diário ARIMA (próximo período):")
-                st.json({k: f"{v*100:.4f}%" for k,v in portfolio_avancado['arima_forecasts'].items() if pd.notna(v)})
-        else:
-            st.warning("Não foi possível otimizar a carteira com o modelo avançado.")
-    st.header("Comparativo de Carteiras")
-    if carteiras_comparativo_lista:
-        display_comparative_table(carteiras_comparativo_lista)
-        plot_efficient_frontier_comparative(fronteiras_plot_data, portfolios_otimizados_plot_data, carteira_atual_metricas_plot)
-        cols_pie = st.columns(len(carteiras_comparativo_lista))
-        for i, c_data in enumerate(carteiras_comparativo_lista):
-            c = c_data.get("Dados")
-            if c and 'Pesos' in c:
-                with cols_pie[i]:
-                    plot_portfolio_pie_chart(c['Pesos'], c_data['Nome'])
-    else:
-        st.info("Nenhuma carteira para comparar.")
-    # ---- SUGESTÃO DE ALOCAÇÃO PARA NOVO APORTE ----
-    if novo_capital_input > 0 and carteiras_comparativo_lista:
-        st.header("Sugestão de Alocação para Novo Aporte")
-        opcoes_carteira_alvo = [c['Nome'] for c in carteiras_comparativo_lista]
-        carteira_alvo_nome = st.selectbox(
-            "Escolha a carteira alvo para rebalanceamento/aporte",
-            options=opcoes_carteira_alvo,
-            index=opcoes_carteira_alvo.index('Otimizada Avançada (Quant+Econo)') if 'Otimizada Avançada (Quant+Econo)' in opcoes_carteira_alvo else 0
-        )
-        carteira_alvo = next((c for c in carteiras_comparativo_lista if c['Nome'] == carteira_alvo_nome), None)
-        if carteira_alvo and 'Pesos' in carteira_alvo['Dados']:
-            st.write(f"Considerando a carteira '{carteira_alvo_nome}' como alvo e um novo aporte de R$ {novo_capital_input:.2f}.")
-            compras_sugeridas, capital_excedente = sugerir_alocacao_novo_aporte(
-                current_portfolio_composition_values=carteira_atual_composicao_valores,
-                new_capital=novo_capital_input,
-                target_portfolio_weights_decimal=carteira_alvo['Dados']['Pesos']
-            )
-            if compras_sugeridas:
-                st.subheader("Valores a Comprar por Ativo (R$):")
-                df_compras = pd.DataFrame(list(compras_sugeridas.items()), columns=["Ativo", "Valor a Comprar"])
-                st.table(df_compras.style.format({"Valor a Comprar": "{:.2f}"}))
-            else:
-                st.write("Nenhuma compra específica sugerida para o novo aporte para atingir os pesos da carteira alvo (pode já estar alinhado ou o novo aporte é distribuído proporcionalmente).")
-            if capital_excedente > 0.01:
-                st.write(f"Capital excedente após tentativa de alocação para os pesos alvo: R$ {capital_excedente:.2f}")
-    st.success("Análise concluída!")
-else:
-    st.info("Ajuste os parâmetros na barra lateral e clique em 'Executar Análise Avançada'.")
+        if manter_pesos_atuais_opcao != "Não 
