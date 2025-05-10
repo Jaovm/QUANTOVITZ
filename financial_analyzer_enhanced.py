@@ -794,3 +794,4 @@ if __name__ == '__main__':
     print("\nfinancial_analyzer_enhanced.py tests completed.")
 # Compatibilidade: garantir nome antigo para import do Streamlit
 calcular_piotroski_f_score = calcular_piotroski_f_score_br
+obter_dados_fundamentalistas_detalhados = obter_dados_fundamentalistas_detalhados_br
