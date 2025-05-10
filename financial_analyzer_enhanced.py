@@ -101,164 +101,251 @@ def get_yfinance_ticker_info(ticker_symbol):
         return None, None
 
 # --- Fundamental Metrics --- 
-def obter_dados_fundamentalistas_detalhados(ativos):
-    """Obtém dados fundamentalistas detalhados para cálculo de métricas como Piotroski F-Score."""
+def obter_dados_fundamentalistas_detalhados_br(ativos):
+    """
+    Obtém dados fundamentalistas detalhados para ativos da B3, usando yfinance,
+    e complementando com APIs nacionais (exemplo: Brapi) se necessário.
+    Retorna DataFrame padronizado para análise fundamentalista avançada.
+    """
+    import requests
     dados_fund = {}
     for ativo in ativos:
-        print(f"Fetching fundamental data for {ativo}...")
-        insights = load_insights_data_from_json(ativo)
-        info, yf_ticker_obj = get_yfinance_ticker_info(ativo)
-        
         temp_data = {'ticker': ativo}
-        
-        # From insights if available
-        if insights:
-            if insights.get('summaryProfile'):
-                temp_data['sector'] = insights['summaryProfile'].get('sector')
-                temp_data['industry'] = insights['summaryProfile'].get('industry')
-            if insights.get('financialData'):
-                temp_data['returnOnEquity'] = insights['financialData'].get('returnOnEquity')
-                temp_data['currentPrice'] = insights['financialData'].get('currentPrice')
-                temp_data['targetMeanPrice'] = insights['financialData'].get('targetMeanPrice')
-                temp_data['numberOfAnalystOpinions'] = insights['financialData'].get('numberOfAnalystOpinions')
-            if insights.get('defaultKeyStatistics'):
-                temp_data['enterpriseToEbitda'] = insights['defaultKeyStatistics'].get('enterpriseToEbitda')
-                temp_data['trailingPE'] = insights['defaultKeyStatistics'].get('trailingPE')
-                temp_data['priceToBook'] = insights['defaultKeyStatistics'].get('priceToBook')
-                temp_data['forwardPE'] = insights['defaultKeyStatistics'].get('forwardPE')
-                temp_data['sharesOutstanding'] = insights['defaultKeyStatistics'].get('sharesOutstanding')
-            if insights.get('summaryDetail'):
-                temp_data['dividendYield'] = insights['summaryDetail'].get('dividendYield')
-                temp_data['marketCap'] = insights['summaryDetail'].get('marketCap')
-                temp_data['volume'] = insights['summaryDetail'].get('volume')
-
-        # Supplement/overwrite with yfinance.Ticker.info for more direct access or missing fields
+        # Tenta yfinance
+        info, yf_ticker_obj = get_yfinance_ticker_info(ativo)
         if info:
-            temp_data['returnOnEquity'] = info.get('returnOnEquity', temp_data.get('returnOnEquity'))
-            temp_data['enterpriseToEbitda'] = info.get('enterpriseToEbitda', temp_data.get('enterpriseToEbitda'))
-            temp_data['trailingPE'] = info.get('trailingPE', temp_data.get('trailingPE'))
-            temp_data['priceToBook'] = info.get('priceToBook', temp_data.get('priceToBook'))
-            temp_data['dividendYield'] = info.get('dividendYield', temp_data.get('dividendYield'))
-            temp_data['netIncomeToCommon'] = info.get('netIncomeToCommon')
-            temp_data['totalAssets'] = info.get('totalAssets')
+            temp_data['marketCap'] = info.get('marketCap')
+            temp_data['sharesOutstanding'] = info.get('sharesOutstanding')
+            temp_data['dividendYield'] = info.get('dividendYield')
+            temp_data['trailingPE'] = info.get('trailingPE')
+            temp_data['priceToBook'] = info.get('priceToBook')
+            temp_data['returnOnEquity'] = info.get('returnOnEquity')
+            temp_data['totalRevenue'] = info.get('totalRevenue')
             temp_data['operatingCashflow'] = info.get('operatingCashflow')
             temp_data['totalDebt'] = info.get('totalDebt')
-            temp_data['currentRatio'] = info.get('currentRatio')
-            temp_data['sharesOutstanding'] = info.get('sharesOutstanding', temp_data.get('sharesOutstanding'))
             temp_data['grossMargins'] = info.get('grossMargins')
-            temp_data['totalRevenue'] = info.get('totalRevenue')
-            temp_data['earningsGrowth'] = info.get('earningsGrowth')
-            temp_data['revenueGrowth'] = info.get('revenueGrowth')
-            temp_data['netMargin'] = info.get('profitMargins')
-
+            temp_data['netIncomeToCommon'] = info.get('netIncomeToCommon')
+            temp_data['sector'] = info.get('sector')
+            temp_data['industry'] = info.get('industry')
+        # Dados detalhados yfinance (finance, balance_sheet, cashflow)
         if yf_ticker_obj:
             try:
                 financials = yf_ticker_obj.financials
                 balance_sheet = yf_ticker_obj.balance_sheet
                 cashflow = yf_ticker_obj.cashflow
-
+                # Padronização para campos brasileiros
                 if not financials.empty and len(financials.columns) >= 1:
-                    latest_year_col = financials.columns[0]
-                    temp_data['NI_curr'] = financials.loc['Net Income', latest_year_col] if 'Net Income' in financials.index else None
-                    temp_data['Revenue_curr'] = financials.loc['Total Revenue', latest_year_col] if 'Total Revenue' in financials.index else None
-                    temp_data['GrossProfit_curr'] = financials.loc['Gross Profit', latest_year_col] if 'Gross Profit' in financials.index else None
-
+                    col = financials.columns[0]
+                    temp_data['lucro_liquido_atual'] = financials.loc['Net Income', col] if 'Net Income' in financials.index else None
+                    temp_data['lucro_bruto_atual'] = financials.loc['Gross Profit', col] if 'Gross Profit' in financials.index else None
+                    temp_data['receita_liquida_atual'] = financials.loc['Total Revenue', col] if 'Total Revenue' in financials.index else None
                 if not balance_sheet.empty and len(balance_sheet.columns) >= 1:
-                    latest_year_bs_col = balance_sheet.columns[0]
-                    temp_data['TotalAssets_curr'] = balance_sheet.loc['Total Assets', latest_year_bs_col] if 'Total Assets' in balance_sheet.index else None
-                    temp_data['TotalLiab_curr'] = balance_sheet.loc['Total Liab', latest_year_bs_col] if 'Total Liab' in balance_sheet.index else None
-                    temp_data['CurrentAssets_curr'] = balance_sheet.loc['Total Current Assets', latest_year_bs_col] if 'Total Current Assets' in balance_sheet.index else None
-                    temp_data['CurrentLiab_curr'] = balance_sheet.loc['Total Current Liabilities', latest_year_bs_col] if 'Total Current Liabilities' in balance_sheet.index else None
-                    temp_data['LongTermDebt_curr'] = balance_sheet.loc['Long Term Debt', latest_year_bs_col] if 'Long Term Debt' in balance_sheet.index else None
-
+                    col = balance_sheet.columns[0]
+                    temp_data['ativos_totais_atual'] = balance_sheet.loc['Total Assets', col] if 'Total Assets' in balance_sheet.index else None
+                    temp_data['divida_lp_atual'] = balance_sheet.loc['Long Term Debt', col] if 'Long Term Debt' in balance_sheet.index else None
+                    temp_data['ativos_circulantes_atual'] = balance_sheet.loc['Total Current Assets', col] if 'Total Current Assets' in balance_sheet.index else None
+                    temp_data['passivos_circulantes_atual'] = balance_sheet.loc['Total Current Liabilities', col] if 'Total Current Liabilities' in balance_sheet.index else None
                 if not cashflow.empty and len(cashflow.columns) >= 1:
-                    latest_year_cf_col = cashflow.columns[0]
-                    temp_data['CFO_curr'] = cashflow.loc['Total Cash From Operating Activities', latest_year_cf_col] if 'Total Cash From Operating Activities' in cashflow.index else None
-
+                    col = cashflow.columns[0]
+                    temp_data['cfo_atual'] = cashflow.loc['Total Cash From Operating Activities', col] if 'Total Cash From Operating Activities' in cashflow.index else None
+                # Dados do ano anterior (para F-Score)
                 if len(financials.columns) >= 2:
-                    prior_year_col = financials.columns[1]
-                    temp_data['NI_prev'] = financials.loc['Net Income', prior_year_col] if 'Net Income' in financials.index else None
-                    temp_data['Revenue_prev'] = financials.loc['Total Revenue', prior_year_col] if 'Total Revenue' in financials.index else None
-                    temp_data['GrossProfit_prev'] = financials.loc['Gross Profit', prior_year_col] if 'Gross Profit' in financials.index else None
+                    col_prev = financials.columns[1]
+                    temp_data['lucro_liquido_anterior'] = financials.loc['Net Income', col_prev] if 'Net Income' in financials.index else None
+                    temp_data['lucro_bruto_anterior'] = financials.loc['Gross Profit', col_prev] if 'Gross Profit' in financials.index else None
+                    temp_data['receita_liquida_anterior'] = financials.loc['Total Revenue', col_prev] if 'Total Revenue' in financials.index else None
                 if len(balance_sheet.columns) >= 2:
-                    prior_year_bs_col = balance_sheet.columns[1]
-                    temp_data['TotalAssets_prev'] = balance_sheet.loc['Total Assets', prior_year_bs_col] if 'Total Assets' in balance_sheet.index else None
-                    temp_data['TotalLiab_prev'] = balance_sheet.loc['Total Liab', prior_year_bs_col] if 'Total Liab' in balance_sheet.index else None
-                    temp_data['CurrentAssets_prev'] = balance_sheet.loc['Total Current Assets', prior_year_bs_col] if 'Total Current Assets' in balance_sheet.index else None
-                    temp_data['CurrentLiab_prev'] = balance_sheet.loc['Total Current Liabilities', prior_year_bs_col] if 'Total Current Liabilities' in balance_sheet.index else None
-                    temp_data['LongTermDebt_prev'] = balance_sheet.loc['Long Term Debt', prior_year_bs_col] if 'Long Term Debt' in balance_sheet.index else None
-
+                    col_prev = balance_sheet.columns[1]
+                    temp_data['ativos_totais_anterior'] = balance_sheet.loc['Total Assets', col_prev] if 'Total Assets' in balance_sheet.index else None
+                    temp_data['divida_lp_anterior'] = balance_sheet.loc['Long Term Debt', col_prev] if 'Long Term Debt' in balance_sheet.index else None
+                    temp_data['ativos_circulantes_anterior'] = balance_sheet.loc['Total Current Assets', col_prev] if 'Total Current Assets' in balance_sheet.index else None
+                    temp_data['passivos_circulantes_anterior'] = balance_sheet.loc['Total Current Liabilities', col_prev] if 'Total Current Liabilities' in balance_sheet.index else None
             except Exception as e:
-                print(f"Error fetching detailed financials for {ativo} via yfinance object: {e}")        
-        
+                print(f"Erro ao buscar dados detalhados para {ativo}: {e}")
+
+        # INTEGRAÇÃO (mock) com Brapi para complementar dados de empresas da B3
+        try:
+            # Exemplo: https://brapi.dev/api/quote/PETR4.SA?fundamental=true
+            url_brapi = f"https://brapi.dev/api/quote/{ativo}?fundamental=true"
+            r = requests.get(url_brapi, timeout=3)
+            if r.status_code == 200:
+                brapi_data = r.json()['results'][0].get('fundamental', {})
+                temp_data['roic'] = brapi_data.get('roic')
+                temp_data['ebit_margin'] = brapi_data.get('ebitMargin')
+                temp_data['net_debt_ebitda'] = brapi_data.get('netDebtEBITDA')
+                temp_data['cagr_receita_5a'] = brapi_data.get('revenueCAGR5Y')
+                temp_data['cagr_lucro_5a'] = brapi_data.get('netIncomeCAGR5Y')
+        except Exception as e:
+            print(f"Falha ao buscar dados Brapi para {ativo}: {e}")
+
         dados_fund[ativo] = temp_data
-        
+
     df_fund = pd.DataFrame.from_dict(dados_fund, orient='index')
-    cols_to_numeric = ['returnOnEquity', 'enterpriseToEbitda', 'trailingPE', 'priceToBook', 'dividendYield',
-                       'netIncomeToCommon', 'totalAssets', 'operatingCashflow', 'totalDebt', 'currentRatio',
-                       'sharesOutstanding', 'grossMargins', 'totalRevenue', 'earningsGrowth', 'revenueGrowth', 'netMargin',
-                       'NI_curr', 'Revenue_curr', 'GrossProfit_curr', 'TotalAssets_curr', 'TotalLiab_curr',
-                       'CurrentAssets_curr', 'CurrentLiab_curr', 'LongTermDebt_curr', 'CFO_curr',
-                       'NI_prev', 'Revenue_prev', 'GrossProfit_prev', 'TotalAssets_prev', 'TotalLiab_prev',
-                       'CurrentAssets_prev', 'CurrentLiab_prev', 'LongTermDebt_prev']
-    for col in cols_to_numeric:
-        if col in df_fund.columns:
-            df_fund[col] = pd.to_numeric(df_fund[col], errors='coerce')
+    # Conversão numérica
+    for col in df_fund.columns:
+        df_fund[col] = pd.to_numeric(df_fund[col], errors='ignore')
     return df_fund
 
-def calcular_piotroski_f_score(df_fund_row):
-    """Calculates Piotroski F-Score for a single asset's fundamental data row."""
-    score = 0
+def calcular_piotroski_f_score_br_br(row, verbose=False):
+    """
+    Calcula o Piotroski F-Score e retorna score e detalhamento dos critérios para empresas brasileiras.
+    Parâmetros:
+        row: linha do dataframe de fundamentos (campos padronizados).
+        verbose: se True, retorna score e dict detalhado.
+    """
+
+    # Padronização dos campos para empresas brasileiras
+    lucro_liquido_atual = row.get('lucro_liquido_atual') or row.get('NI_curr') or row.get('NetIncome_curr')
+    lucro_liquido_anterior = row.get('lucro_liquido_anterior') or row.get('NI_prev') or row.get('NetIncome_prev')
+    receita_liquida_atual = row.get('receita_liquida_atual') or row.get('Revenue_curr') or row.get('TotalRevenue_curr')
+    receita_liquida_anterior = row.get('receita_liquida_anterior') or row.get('Revenue_prev') or row.get('TotalRevenue_prev')
+    ativos_totais_atual = row.get('ativos_totais_atual') or row.get('TotalAssets_curr')
+    ativos_totais_anterior = row.get('ativos_totais_anterior') or row.get('TotalAssets_prev')
+    cfo_atual = row.get('cfo_atual') or row.get('CFO_curr') or row.get('operatingCashflow')
+    divida_longo_prazo_atual = row.get('divida_lp_atual') or row.get('LongTermDebt_curr')
+    divida_longo_prazo_anterior = row.get('divida_lp_anterior') or row.get('LongTermDebt_prev')
+    ativos_circulantes_atual = row.get('ativos_circulantes_atual') or row.get('CurrentAssets_curr')
+    passivos_circulantes_atual = row.get('passivos_circulantes_atual') or row.get('CurrentLiab_curr')
+    ativos_circulantes_anterior = row.get('ativos_circulantes_anterior') or row.get('CurrentAssets_prev')
+    passivos_circulantes_anterior = row.get('passivos_circulantes_anterior') or row.get('CurrentLiab_prev')
+    acoes_emitidas_atual = row.get('acoes_emitidas_atual') or row.get('sharesOutstanding')
+    acoes_emitidas_anterior = row.get('acoes_emitidas_anterior') or row.get('sharesOutstanding_prev')
+
+    # Lucros e margens
+    margem_bruta_atual = row.get('margem_bruta_atual') or row.get('GrossMargin_curr')
+    margem_bruta_anterior = row.get('margem_bruta_anterior') or row.get('GrossMargin_prev')
+    lucro_bruto_atual = row.get('lucro_bruto_atual') or row.get('GrossProfit_curr')
+    lucro_bruto_anterior = row.get('lucro_bruto_anterior') or row.get('GrossProfit_prev')
+    # Se não vier margem, calcula
+    if pd.notna(lucro_bruto_atual) and pd.notna(receita_liquida_atual) and receita_liquida_atual:
+        margem_bruta_atual = lucro_bruto_atual / receita_liquida_atual
+    if pd.notna(lucro_bruto_anterior) and pd.notna(receita_liquida_anterior) and receita_liquida_anterior:
+        margem_bruta_anterior = lucro_bruto_anterior / receita_liquida_anterior
+
+    # Rotatividade de ativos
     try:
-        ni_curr = df_fund_row.get('NI_curr')
-        assets_curr = df_fund_row.get('TotalAssets_curr')
-        assets_prev = df_fund_row.get('TotalAssets_prev')
-        cfo_curr = df_fund_row.get('CFO_curr')
-        ni_prev = df_fund_row.get('NI_prev')
+        rot_ativos_atual = receita_liquida_atual / ativos_totais_atual if pd.notna(receita_liquida_atual) and pd.notna(ativos_totais_atual) and ativos_totais_atual else np.nan
+        rot_ativos_anterior = receita_liquida_anterior / ativos_totais_anterior if pd.notna(receita_liquida_anterior) and pd.notna(ativos_totais_anterior) and ativos_totais_anterior else np.nan
+    except Exception:
+        rot_ativos_atual = rot_ativos_anterior = np.nan
 
-        if pd.notna(ni_curr) and ni_curr > 0: score += 1
-        if pd.notna(cfo_curr) and cfo_curr > 0: score += 1
-        if pd.notna(ni_curr) and pd.notna(assets_curr) and assets_curr > 0 and \
-           pd.notna(ni_prev) and pd.notna(assets_prev) and assets_prev > 0:
-            roa_curr = ni_curr / assets_curr
-            roa_prev = ni_prev / assets_prev
-            if roa_curr > roa_prev: score += 1
-        if pd.notna(cfo_curr) and pd.notna(ni_curr) and cfo_curr > ni_curr: score += 1
-        lt_debt_curr = df_fund_row.get('LongTermDebt_curr')
-        lt_debt_prev = df_fund_row.get('LongTermDebt_prev')
-        if pd.notna(lt_debt_curr) and pd.notna(assets_curr) and assets_curr > 0 and \
-           pd.notna(lt_debt_prev) and pd.notna(assets_prev) and assets_prev > 0:
-            leverage_curr = lt_debt_curr / assets_curr
-            leverage_prev = lt_debt_prev / assets_prev
-            if leverage_curr < leverage_prev: score += 1
-        curr_assets_curr = df_fund_row.get('CurrentAssets_curr')
-        curr_liab_curr = df_fund_row.get('CurrentLiab_curr')
-        curr_assets_prev = df_fund_row.get('CurrentAssets_prev')
-        curr_liab_prev = df_fund_row.get('CurrentLiab_prev')
-        if pd.notna(curr_assets_curr) and pd.notna(curr_liab_curr) and curr_liab_curr > 0 and \
-           pd.notna(curr_assets_prev) and pd.notna(curr_liab_prev) and curr_liab_prev > 0:
-            current_ratio_curr = curr_assets_curr / curr_liab_curr
-            current_ratio_prev = curr_assets_prev / curr_liab_prev
-            if current_ratio_curr > current_ratio_prev: score += 1
-        gp_curr = df_fund_row.get('GrossProfit_curr')
-        rev_curr = df_fund_row.get('Revenue_curr')
-        gp_prev = df_fund_row.get('GrossProfit_prev')
-        rev_prev = df_fund_row.get('Revenue_prev')
-        if pd.notna(gp_curr) and pd.notna(rev_curr) and rev_curr > 0 and \
-           pd.notna(gp_prev) and pd.notna(rev_prev) and rev_prev > 0:
-            gross_margin_curr = gp_curr / rev_curr
-            gross_margin_prev = gp_prev / rev_prev
-            if gross_margin_curr > gross_margin_prev: score += 1
-        if pd.notna(rev_curr) and pd.notna(assets_curr) and assets_curr > 0 and \
-           pd.notna(rev_prev) and pd.notna(assets_prev) and assets_prev > 0:
-            asset_turnover_curr = rev_curr / assets_curr
-            asset_turnover_prev = rev_prev / assets_prev
-            if asset_turnover_curr > asset_turnover_prev: score += 1
-    except Exception as e:
-        print(f"Error calculating Piotroski F-Score for row: {e}")
-        return np.nan
+    criterios = {}
+
+    # 1. Lucro Líquido positivo
+    criterios['lucro_liquido_positivo'] = pd.notna(lucro_liquido_atual) and lucro_liquido_atual > 0
+
+    # 2. ROA crescente
+    try:
+        roa_atual = lucro_liquido_atual / ativos_totais_atual if pd.notna(lucro_liquido_atual) and pd.notna(ativos_totais_atual) and ativos_totais_atual else np.nan
+        roa_anterior = lucro_liquido_anterior / ativos_totais_anterior if pd.notna(lucro_liquido_anterior) and pd.notna(ativos_totais_anterior) and ativos_totais_anterior else np.nan
+        criterios['roa_crescente'] = pd.notna(roa_atual) and pd.notna(roa_anterior) and roa_atual > roa_anterior
+    except Exception:
+        criterios['roa_crescente'] = False
+
+    # 3. CFO positivo
+    criterios['cfo_positivo'] = pd.notna(cfo_atual) and cfo_atual > 0
+
+    # 4. CFO > Lucro Líquido
+    criterios['cfo_maior_que_lucro'] = pd.notna(cfo_atual) and pd.notna(lucro_liquido_atual) and cfo_atual > lucro_liquido_atual
+
+    # 5. Queda da dívida de longo prazo
+    criterios['queda_divida_lp'] = (
+        pd.notna(divida_longo_prazo_atual) and pd.notna(divida_longo_prazo_anterior)
+        and divida_longo_prazo_atual < divida_longo_prazo_anterior
+    )
+
+    # 6. Aumento do índice de liquidez corrente
+    try:
+        liquidez_corrente_atual = ativos_circulantes_atual / passivos_circulantes_atual if pd.notna(ativos_circulantes_atual) and pd.notna(passivos_circulantes_atual) and passivos_circulantes_atual else np.nan
+        liquidez_corrente_anterior = ativos_circulantes_anterior / passivos_circulantes_anterior if pd.notna(ativos_circulantes_anterior) and pd.notna(passivos_circulantes_anterior) and passivos_circulantes_anterior else np.nan
+        criterios['aumento_liquidez_corrente'] = pd.notna(liquidez_corrente_atual) and pd.notna(liquidez_corrente_anterior) and liquidez_corrente_atual > liquidez_corrente_anterior
+    except Exception:
+        criterios['aumento_liquidez_corrente'] = False
+
+    # 7. Aumento da margem bruta
+    criterios['aumento_margem_bruta'] = pd.notna(margem_bruta_atual) and pd.notna(margem_bruta_anterior) and margem_bruta_atual > margem_bruta_anterior
+
+    # 8. Aumento da rotatividade de ativos
+    criterios['aumento_rotatividade_ativos'] = pd.notna(rot_ativos_atual) and pd.notna(rot_ativos_anterior) and rot_ativos_atual > rot_ativos_anterior
+
+    # 9. Não emissão de ações
+    criterios['nao_emitiu_acoes'] = (
+        pd.notna(acoes_emitidas_atual)
+        and pd.notna(acoes_emitidas_anterior)
+        and acoes_emitidas_atual <= acoes_emitidas_anterior
+    )
+
+    score = sum(criterios.values())
+    if verbose:
+        return score, criterios
     return score
+def calcular_altman_z_score(row):
+    """
+    Calcula o Altman Z-Score (versão para empresas não financeiras brasileiras).
+    Retorna float.
+    """
+    # Padronização dos campos (ajuste conforme disponibilidade dos dados)
+    ativos_totais = row.get('ativos_totais_atual') or row.get('TotalAssets_curr')
+    passivo_circulante = row.get('passivos_circulantes_atual') or row.get('CurrentLiab_curr')
+    capital_giro = (row.get('ativos_circulantes_atual') or row.get('CurrentAssets_curr')) - passivo_circulante if pd.notna(passivo_circulante) else np.nan
+    receita_liquida = row.get('receita_liquida_atual') or row.get('Revenue_curr')
+    ebit = row.get('ebit') or row.get('EBIT') or row.get('ebit_margin') * receita_liquida if 'ebit_margin' in row and pd.notna(row['ebit_margin']) else np.nan
+    patrimonio_liquido = row.get('patrimonio_liquido') or row.get('Equity') or np.nan
+    lucro_retido = row.get('lucro_retido') or np.nan
+    valor_mercado = row.get('marketCap')
+    total_passivo = row.get('totalDebt') or np.nan
 
+    try:
+        A = capital_giro / ativos_totais
+        B = lucro_retido / ativos_totais if pd.notna(lucro_retido) and pd.notna(ativos_totais) else 0
+        C = ebit / ativos_totais if pd.notna(ebit) and pd.notna(ativos_totais) else 0
+        D = valor_mercado / total_passivo if pd.notna(valor_mercado) and pd.notna(total_passivo) and total_passivo > 0 else 0
+        E = receita_liquida / ativos_totais if pd.notna(receita_liquida) and pd.notna(ativos_totais) else 0
+        z_score = 1.2*A + 1.4*B + 3.3*C + 0.6*D + 1.0*E
+        return z_score
+    except Exception:
+        return np.nan
+
+def calcular_beneish_m_score(row):
+    """
+    Calcula o Beneish M-Score para detectar manipulação contábil.
+    Retorna float.
+    """
+    # Padronize os campos conforme disponíveis na base
+    # Atenção: pode exigir vários anos de dados, implemente versões simplificadas se necessário
+    try:
+        dsri = row.get('DSRI', 1.0)    # Days Sales in Receivables Index
+        gmi = row.get('GMI', 1.0)      # Gross Margin Index
+        aqi = row.get('AQI', 1.0)      # Asset Quality Index
+        sgi = row.get('SGI', 1.0)      # Sales Growth Index
+        depi = row.get('DEPI', 1.0)    # Depreciation Index
+        sgai = row.get('SGAI', 1.0)    # SGA Expense Index
+        lvgi = row.get('LVGI', 1.0)    # Leverage Index
+        tata = row.get('TATA', 0.0)    # Total Accruals to Total Assets
+
+        m_score = (
+            -4.84 + 0.92*dsri + 0.528*gmi + 0.404*aqi + 0.892*sgi +
+            0.115*depi - 0.172*sgai + 4.679*lvgi - 0.327*tata
+        )
+        return m_score
+    except Exception:
+        return np.nan
+
+def calcular_score_setorial(row, media_setor: dict, campos_multiplo: list):
+    """
+    Compara múltiplos da empresa com a média do setor.
+    Retorna score (quanto menor, melhor).
+    Exemplo de uso:
+        calcular_score_setorial(row, media_setor={'trailingPE': 10, ...}, campos_multiplo=['trailingPE','priceToBook'])
+    """
+    score = 0
+    for campo in campos_multiplo:
+        valor = row.get(campo)
+        media = media_setor.get(campo)
+        if pd.notna(valor) and pd.notna(media):
+            score += (valor / media)
+    return score / len(campos_multiplo) if campos_multiplo else np.nan
+    
 def calcular_value_composite_score(df_fundamental, metrics_config):
     if df_fundamental.empty:
         return pd.Series(dtype=float)
@@ -467,7 +554,7 @@ def otimizar_portfolio_scipy(
     garch_volatilities = {}
     if df_fundamental_completo is not None and not df_fundamental_completo.empty:
         if 'Piotroski_F_Score' not in df_fundamental_completo.columns:
-            df_fundamental_completo['Piotroski_F_Score'] = df_fundamental_completo.apply(calcular_piotroski_f_score, axis=1)
+            df_fundamental_completo['Piotroski_F_Score'] = df_fundamental_completo.apply(calcular_piotroski_f_score_br, axis=1)
         vc_metrics = {
             'trailingPE': 'lower_is_better', 
             'priceToBook': 'lower_is_better', 
@@ -647,10 +734,12 @@ if __name__ == '__main__':
     else:
         print("Failed to fetch historical returns.")
     print("\n--- Testing Fundamental Data ---")
-    df_fund_data = obter_dados_fundamentalistas_detalhados(test_ativos)
+    df_fund_data = obter_dados_fundamentalistas_detalhados_br(test_ativos)
     if not df_fund_data.empty:
-        print(f"Successfully fetched fundamental data. Shape: {df_fund_data.shape}")
-        df_fund_data['Piotroski_F_Score'] = df_fund_data.apply(calcular_piotroski_f_score, axis=1)
+        df_fund_data['Piotroski_F_Score'], df_fund_data['Piotroski_F_Detalhes'] = zip(*df_fund_data.apply(lambda row: calcular_piotroski_f_score_br(row, verbose=True), axis=1))
+        df_fund_data['Altman_Z_Score'] = df_fund_data.apply(calcular_altman_z_score, axis=1)
+        df_fund_data['Beneish_M_Score'] = df_fund_data.apply(calcular_beneish_m_score, axis=1)
+        # E assim por diante...
         vc_metrics_test = {
             'trailingPE': 'lower_is_better', 'priceToBook': 'lower_is_better', 
             'enterpriseToEbitda': 'lower_is_better', 'dividendYield': 'higher_is_better',
