@@ -123,8 +123,8 @@ def obter_dados_fundamentalistas_detalhados(ativos):
                 temp_data['numberOfAnalystOpinions'] = insights['financialData'].get('numberOfAnalystOpinions')
             if insights.get('defaultKeyStatistics'):
                 temp_data['enterpriseToEbitda'] = insights['defaultKeyStatistics'].get('enterpriseToEbitda')
-                temp_data['trailingPE'] = insights['defaultKeyStatistics'].get('trailingPE') # P/L
-                temp_data['priceToBook'] = insights['defaultKeyStatistics'].get('priceToBook') # P/VP
+                temp_data['trailingPE'] = insights['defaultKeyStatistics'].get('trailingPE')
+                temp_data['priceToBook'] = insights['defaultKeyStatistics'].get('priceToBook')
                 temp_data['forwardPE'] = insights['defaultKeyStatistics'].get('forwardPE')
                 temp_data['sharesOutstanding'] = insights['defaultKeyStatistics'].get('sharesOutstanding')
             if insights.get('summaryDetail'):
@@ -139,8 +139,8 @@ def obter_dados_fundamentalistas_detalhados(ativos):
             temp_data['trailingPE'] = info.get('trailingPE', temp_data.get('trailingPE'))
             temp_data['priceToBook'] = info.get('priceToBook', temp_data.get('priceToBook'))
             temp_data['dividendYield'] = info.get('dividendYield', temp_data.get('dividendYield'))
-            temp_data['netIncomeToCommon'] = info.get('netIncomeToCommon') # Net Income
-            temp_data['totalAssets'] = info.get('totalAssets') # For ROA
+            temp_data['netIncomeToCommon'] = info.get('netIncomeToCommon')
+            temp_data['totalAssets'] = info.get('totalAssets')
             temp_data['operatingCashflow'] = info.get('operatingCashflow')
             temp_data['totalDebt'] = info.get('totalDebt')
             temp_data['currentRatio'] = info.get('currentRatio')
@@ -149,10 +149,8 @@ def obter_dados_fundamentalistas_detalhados(ativos):
             temp_data['totalRevenue'] = info.get('totalRevenue')
             temp_data['earningsGrowth'] = info.get('earningsGrowth')
             temp_data['revenueGrowth'] = info.get('revenueGrowth')
-            temp_data['netMargin'] = info.get('profitMargins') # yfinance calls it profitMargins
+            temp_data['netMargin'] = info.get('profitMargins')
 
-        # For Piotroski, we need historical data (financials, balance sheet, cashflow)
-        # This part can be very extensive. We'll try to get what's available for current and prior year.
         if yf_ticker_obj:
             try:
                 financials = yf_ticker_obj.financials
@@ -164,7 +162,7 @@ def obter_dados_fundamentalistas_detalhados(ativos):
                     temp_data['NI_curr'] = financials.loc['Net Income', latest_year_col] if 'Net Income' in financials.index else None
                     temp_data['Revenue_curr'] = financials.loc['Total Revenue', latest_year_col] if 'Total Revenue' in financials.index else None
                     temp_data['GrossProfit_curr'] = financials.loc['Gross Profit', latest_year_col] if 'Gross Profit' in financials.index else None
-                
+
                 if not balance_sheet.empty and len(balance_sheet.columns) >= 1:
                     latest_year_bs_col = balance_sheet.columns[0]
                     temp_data['TotalAssets_curr'] = balance_sheet.loc['Total Assets', latest_year_bs_col] if 'Total Assets' in balance_sheet.index else None
@@ -172,12 +170,11 @@ def obter_dados_fundamentalistas_detalhados(ativos):
                     temp_data['CurrentAssets_curr'] = balance_sheet.loc['Total Current Assets', latest_year_bs_col] if 'Total Current Assets' in balance_sheet.index else None
                     temp_data['CurrentLiab_curr'] = balance_sheet.loc['Total Current Liabilities', latest_year_bs_col] if 'Total Current Liabilities' in balance_sheet.index else None
                     temp_data['LongTermDebt_curr'] = balance_sheet.loc['Long Term Debt', latest_year_bs_col] if 'Long Term Debt' in balance_sheet.index else None
-                
+
                 if not cashflow.empty and len(cashflow.columns) >= 1:
                     latest_year_cf_col = cashflow.columns[0]
                     temp_data['CFO_curr'] = cashflow.loc['Total Cash From Operating Activities', latest_year_cf_col] if 'Total Cash From Operating Activities' in cashflow.index else None
 
-                # Prior year data (if available)
                 if len(financials.columns) >= 2:
                     prior_year_col = financials.columns[1]
                     temp_data['NI_prev'] = financials.loc['Net Income', prior_year_col] if 'Net Income' in financials.index else None
@@ -190,8 +187,6 @@ def obter_dados_fundamentalistas_detalhados(ativos):
                     temp_data['CurrentAssets_prev'] = balance_sheet.loc['Total Current Assets', prior_year_bs_col] if 'Total Current Assets' in balance_sheet.index else None
                     temp_data['CurrentLiab_prev'] = balance_sheet.loc['Total Current Liabilities', prior_year_bs_col] if 'Total Current Liabilities' in balance_sheet.index else None
                     temp_data['LongTermDebt_prev'] = balance_sheet.loc['Long Term Debt', prior_year_bs_col] if 'Long Term Debt' in balance_sheet.index else None
-                # Shares outstanding for prior period might need to be inferred or is harder to get consistently for the exact prior period of financials.
-                # For simplicity, we might use current shares outstanding if historical isn't easily available for the check.
 
             except Exception as e:
                 print(f"Error fetching detailed financials for {ativo} via yfinance object: {e}")        
@@ -199,7 +194,6 @@ def obter_dados_fundamentalistas_detalhados(ativos):
         dados_fund[ativo] = temp_data
         
     df_fund = pd.DataFrame.from_dict(dados_fund, orient='index')
-    # Convert relevant columns to numeric, coercing errors
     cols_to_numeric = ['returnOnEquity', 'enterpriseToEbitda', 'trailingPE', 'priceToBook', 'dividendYield',
                        'netIncomeToCommon', 'totalAssets', 'operatingCashflow', 'totalDebt', 'currentRatio',
                        'sharesOutstanding', 'grossMargins', 'totalRevenue', 'earningsGrowth', 'revenueGrowth', 'netMargin',
@@ -216,34 +210,27 @@ def calcular_piotroski_f_score(df_fund_row):
     """Calculates Piotroski F-Score for a single asset's fundamental data row."""
     score = 0
     try:
-        # Profitability
         ni_curr = df_fund_row.get('NI_curr')
         assets_curr = df_fund_row.get('TotalAssets_curr')
         assets_prev = df_fund_row.get('TotalAssets_prev')
         cfo_curr = df_fund_row.get('CFO_curr')
         ni_prev = df_fund_row.get('NI_prev')
 
-        if pd.notna(ni_curr) and ni_curr > 0: score += 1 # 1. Net Income
-        if pd.notna(cfo_curr) and cfo_curr > 0: score += 1 # 2. Operating Cash Flow
-        
+        if pd.notna(ni_curr) and ni_curr > 0: score += 1
+        if pd.notna(cfo_curr) and cfo_curr > 0: score += 1
         if pd.notna(ni_curr) and pd.notna(assets_curr) and assets_curr > 0 and \
            pd.notna(ni_prev) and pd.notna(assets_prev) and assets_prev > 0:
             roa_curr = ni_curr / assets_curr
             roa_prev = ni_prev / assets_prev
-            if roa_curr > roa_prev: score += 1 # 3. ROA increasing
-        
-        if pd.notna(cfo_curr) and pd.notna(ni_curr) and cfo_curr > ni_curr: score += 1 # 4. CFO > NI (Quality of Earnings)
-
-        # Leverage, Liquidity, Source of Funds
+            if roa_curr > roa_prev: score += 1
+        if pd.notna(cfo_curr) and pd.notna(ni_curr) and cfo_curr > ni_curr: score += 1
         lt_debt_curr = df_fund_row.get('LongTermDebt_curr')
         lt_debt_prev = df_fund_row.get('LongTermDebt_prev')
-        # Using debt-to-assets ratio change
         if pd.notna(lt_debt_curr) and pd.notna(assets_curr) and assets_curr > 0 and \
            pd.notna(lt_debt_prev) and pd.notna(assets_prev) and assets_prev > 0:
             leverage_curr = lt_debt_curr / assets_curr
             leverage_prev = lt_debt_prev / assets_prev
-            if leverage_curr < leverage_prev: score += 1 # 5. Leverage decreasing
-        
+            if leverage_curr < leverage_prev: score += 1
         curr_assets_curr = df_fund_row.get('CurrentAssets_curr')
         curr_liab_curr = df_fund_row.get('CurrentLiab_curr')
         curr_assets_prev = df_fund_row.get('CurrentAssets_prev')
@@ -252,16 +239,7 @@ def calcular_piotroski_f_score(df_fund_row):
            pd.notna(curr_assets_prev) and pd.notna(curr_liab_prev) and curr_liab_prev > 0:
             current_ratio_curr = curr_assets_curr / curr_liab_curr
             current_ratio_prev = curr_assets_prev / curr_liab_prev
-            if current_ratio_curr > current_ratio_prev: score += 1 # 6. Current Ratio increasing
-        
-        # Shares outstanding check is simplified; yfinance doesn't easily give historical daily shares for exact comparison period.
-        # Assuming 'sharesOutstanding' from info is recent. If it's stable or decreasing (e.g. buybacks), it's good.
-        # This criterion is often hard to implement perfectly without point-in-time historical share data.
-        # For now, we'll skip or simplify: if no info on share issuance, assume neutral.
-        # Placeholder: if shares_outstanding_curr <= shares_outstanding_prev: score +=1 (needs shares_outstanding_prev)
-        # For now, let's assume this is neutral (no score added or subtracted) due to data limitations.
-
-        # Operating Efficiency
+            if current_ratio_curr > current_ratio_prev: score += 1
         gp_curr = df_fund_row.get('GrossProfit_curr')
         rev_curr = df_fund_row.get('Revenue_curr')
         gp_prev = df_fund_row.get('GrossProfit_prev')
@@ -270,146 +248,97 @@ def calcular_piotroski_f_score(df_fund_row):
            pd.notna(gp_prev) and pd.notna(rev_prev) and rev_prev > 0:
             gross_margin_curr = gp_curr / rev_curr
             gross_margin_prev = gp_prev / rev_prev
-            if gross_margin_curr > gross_margin_prev: score += 1 # 8. Gross Margin increasing
-
+            if gross_margin_curr > gross_margin_prev: score += 1
         if pd.notna(rev_curr) and pd.notna(assets_curr) and assets_curr > 0 and \
            pd.notna(rev_prev) and pd.notna(assets_prev) and assets_prev > 0:
             asset_turnover_curr = rev_curr / assets_curr
             asset_turnover_prev = rev_prev / assets_prev
-            if asset_turnover_curr > asset_turnover_prev: score += 1 # 9. Asset Turnover increasing
-            
+            if asset_turnover_curr > asset_turnover_prev: score += 1
     except Exception as e:
         print(f"Error calculating Piotroski F-Score for row: {e}")
         return np.nan
     return score
 
 def calcular_value_composite_score(df_fundamental, metrics_config):
-    """
-    Calculates a composite value score based on specified metrics and their ranking direction.
-    metrics_config: dict, e.g., {'trailingPE': 'lower_is_better', 'priceToBook': 'lower_is_better', 'dividendYield': 'higher_is_better'}
-    """
     if df_fundamental.empty:
         return pd.Series(dtype=float)
-    
     ranked_df = pd.DataFrame(index=df_fundamental.index)
     for metric, ranking_type in metrics_config.items():
         if metric in df_fundamental.columns:
-            # Ensure metric is numeric and handle NaNs by not including them in rank or assigning worst rank
             numeric_metric = pd.to_numeric(df_fundamental[metric], errors='coerce')
             if ranking_type == 'lower_is_better':
                 ranked_df[metric + '_rank'] = numeric_metric.rank(pct=True, ascending=True) 
             elif ranking_type == 'higher_is_better':
                 ranked_df[metric + '_rank'] = numeric_metric.rank(pct=True, ascending=False)
-            else: # Default to ascending if not specified (lower is better)
+            else:
                  ranked_df[metric + '_rank'] = numeric_metric.rank(pct=True, ascending=True)
         else:
             print(f"Warning: Metric {metric} not found in fundamental data for Value Composite Score.")
-
-    # Calculate composite score (average of ranks)
     rank_cols = [col for col in ranked_df.columns if '_rank' in col]
     if not rank_cols:
         return pd.Series(dtype=float, index=df_fundamental.index)
-        
     composite_score = ranked_df[rank_cols].mean(axis=1)
     return composite_score
 
-# --- Econometric Models ---
 def calcular_volatilidade_garch(returns_series, p=1, q=1):
-    """Calculates forecasted GARCH volatility."""
-    if returns_series.empty or len(returns_series) < (p + q + 20): # Need enough data points
+    if returns_series.empty or len(returns_series) < (p + q + 20):
         print(f"Not enough data points for GARCH model on series: {returns_series.name}")
         return np.nan
     try:
-        # Scale returns for GARCH model (common practice)
         scaled_returns = returns_series * 100
         model = arch_model(scaled_returns, vol='Garch', p=p, q=q, rescale=False)
         res = model.fit(disp='off', show_warning=False)
         forecast = res.forecast(horizon=1)
-        # Annualize daily forecasted variance. Variance is h.1, take sqrt for vol, then scale back from %
-        # The forecast variance is already for the scaled returns.
         forecasted_std_dev_daily_scaled = np.sqrt(forecast.variance.iloc[-1,0])
         forecasted_std_dev_daily = forecasted_std_dev_daily_scaled / 100.0
-        # Annualize: multiply daily std dev by sqrt(252)
         return forecasted_std_dev_daily * np.sqrt(252)
     except Exception as e:
         print(f"Error fitting GARCH for {returns_series.name}: {e}")
-        return np.nan # Return historical if GARCH fails
+        return np.nan
 
 def get_fama_french_factors(start_date, end_date, risk_free_rate_series=None):
-    """ 
-    Downloads Fama-French 3 factors (Mkt-RF, SMB, HML) and Momentum (WML) as proxies using yfinance.
-    This is a simplified proxy approach.
-    Returns a DataFrame with factor returns.
-    """
     print("Fetching Fama-French factor proxies...")
-    # Proxies (US-centric, adjust for Brazil if primary market)
-    # Market: S&P 500 (^GSPC)
-    # SMB: Russell 2000 (^RUT) - S&P 500 (^GSPC)
-    # HML: Russell 1000 Value (^RLV) - Russell 1000 Growth (^RLG) (Example)
-    # WML: Momentum ETF (MTUM) (Example)
-    # Risk-Free: Use a constant or fetch e.g. ^IRX (13 Week Treasury Bill)
-    
     factor_tickers = {
-        'MKT_PROXY': '^GSPC', # Market proxy
-        'SMB_SMALL': '^RUT',  # Small cap proxy for SMB
-        'SMB_LARGE': '^GSPC', # Large cap proxy for SMB
-        'HML_VALUE': 'IVE',   # Example: iShares S&P 500 Value ETF for HML
-        'HML_GROWTH':'IVW',  # Example: iShares S&P 500 Growth ETF for HML
-        'WML_MOM': 'MTUM'     # Example: iShares MSCI USA Momentum Factor ETF for WML
+        'MKT_PROXY': '^GSPC',
+        'SMB_SMALL': '^RUT',
+        'SMB_LARGE': '^GSPC',
+        'HML_VALUE': 'IVE',
+        'HML_GROWTH':'IVW',
+        'WML_MOM': 'MTUM'
     }
-    # For Brazilian market, one might use: IBOV for MKT, SMLL for SMB_SMALL, IVVB11 or similar for large cap comparison,
-    # specific value/growth ETFs if available, or a momentum index/ETF.
-
     factor_data_all_cols = yf.download(list(factor_tickers.values()), start=start_date, end=end_date, progress=False)
     if factor_data_all_cols.empty:
         print("Could not download factor proxy data (empty main DataFrame).")
         return pd.DataFrame()
     try:
-        # With auto_adjust=True (default in yfinance), 'Close' column is adjusted.
-        # For multiple tickers, yf.download returns a multi-index DataFrame.
-        # Accessing ['Close'] should give a DataFrame of Close prices with tickers as columns.
         factor_data_raw = factor_data_all_cols['Close']
     except KeyError:
         try:
-            # Fallback if 'Close' isn't there but 'Adj Close' is (less likely with modern yfinance defaults)
             factor_data_raw = factor_data_all_cols['Adj Close']
         except KeyError:
             print("Error: Neither 'Close' nor 'Adj Close' found as a primary column key for factor data.")
             available_keys = factor_data_all_cols.columns.levels[0] if isinstance(factor_data_all_cols.columns, pd.MultiIndex) else factor_data_all_cols.columns
             print(f"Available primary column keys: {available_keys}")
             return pd.DataFrame()
-
     if factor_data_raw.empty:
         print("Extracted factor price data ('Close' or 'Adj Close') is empty.")
         return pd.DataFrame()
-    if factor_data_raw.empty:
-        print("Could not download factor proxy data.")
-        return pd.DataFrame()
-
     factor_returns = factor_data_raw.pct_change().dropna()
-
     factors_df = pd.DataFrame(index=factor_returns.index)
-
-    # Risk-Free Rate
     if risk_free_rate_series is None:
-        # Try to fetch ^IRX (13 Week Treasury Bill) as daily risk-free proxy
         rf_data_raw = yf.download('^IRX', start=start_date, end=end_date, progress=False)
         if not rf_data_raw.empty:
             try:
-                # Try to access 'Close' first, as it's often the adjusted price with yfinance defaults
                 rf_data_series = rf_data_raw['Close']
             except KeyError:
                 try:
-                    # Fallback to 'Adj Close' if 'Close' is not found
                     rf_data_series = rf_data_raw['Adj Close']
                 except KeyError:
                     print("Warning: Neither 'Close' nor 'Adj Close' found for ^IRX. RF rate might be inaccurate.")
-                    rf_data_series = pd.Series(dtype=float) # Empty series
-            
+                    rf_data_series = pd.Series(dtype=float)
             if not rf_data_series.empty and pd.api.types.is_numeric_dtype(rf_data_series):
-                # ^IRX is an annualized yield. So, daily_rf = (yield / 100) / 252.
                 daily_rf = (rf_data_series / 100) / 252 
-                factors_df['RF'] = daily_rf.reindex(factors_df.index, method='ffill') # Align and ffill
+                factors_df['RF'] = daily_rf.reindex(factors_df.index, method='ffill')
             else:
                 print("Warning: ^IRX data for risk-free rate is empty or not numeric after extraction. Using default constant / 252.")
                 factors_df['RF'] = (RISK_FREE_RATE_DEFAULT / 252)
@@ -418,67 +347,49 @@ def get_fama_french_factors(start_date, end_date, risk_free_rate_series=None):
             factors_df['RF'] = (RISK_FREE_RATE_DEFAULT / 252)
     else:
         factors_df['RF'] = risk_free_rate_series
-    
-    factors_df.ffill(inplace=True) # Fill NaNs in RF if any # Fill NaNs in RF if any
-    factors_df.dropna(inplace=True) # Drop any remaining NaNs after join
-
-    # Mkt-RF
+    factors_df.ffill(inplace=True)  # <<<< CORREÇÃO DE WARNING (era fillna(method='ffill'))
+    factors_df.dropna(inplace=True)
     if factor_tickers['MKT_PROXY'] in factor_returns.columns and 'RF' in factors_df.columns:
         mkt_rf_series = factor_returns[factor_tickers['MKT_PROXY']] - factors_df['RF']
-        factors_df['Mkt-RF'] = mkt_rf_series.loc[factors_df.index] # Align indices
-
-    # SMB
+        factors_df['Mkt-RF'] = mkt_rf_series.loc[factors_df.index]
     if factor_tickers['SMB_SMALL'] in factor_returns.columns and factor_tickers['SMB_LARGE'] in factor_returns.columns:
         smb_series = factor_returns[factor_tickers['SMB_SMALL']] - factor_returns[factor_tickers['SMB_LARGE']]
         factors_df['SMB'] = smb_series.loc[factors_df.index]
-
-    # HML
     if factor_tickers['HML_VALUE'] in factor_returns.columns and factor_tickers['HML_GROWTH'] in factor_returns.columns:
         hml_series = factor_returns[factor_tickers['HML_VALUE']] - factor_returns[factor_tickers['HML_GROWTH']]
         factors_df['HML'] = hml_series.loc[factors_df.index]
-
-    # WML (Momentum)
     if factor_tickers['WML_MOM'] in factor_returns.columns and 'RF' in factors_df.columns:
-        # Momentum factor is often Mkt_Mom - RF or just Mkt_Mom returns
-        wml_series = factor_returns[factor_tickers['WML_MOM']] - factors_df['RF'] # Example: Mom-RF
+        wml_series = factor_returns[factor_tickers['WML_MOM']] - factors_df['RF']
         factors_df['WML'] = wml_series.loc[factors_df.index]
-    
     factors_df.dropna(inplace=True)
     return factors_df[['Mkt-RF', 'SMB', 'HML', 'WML', 'RF']].copy()
 
 def estimar_fatores_alpha_beta(asset_returns_series, factor_df):
-    """Estimates alpha and betas using OLS regression against Fama-French factors."""
     if asset_returns_series.empty or factor_df.empty:
-        return np.nan, {} # Return NaN for alpha, empty dict for betas
-    
-    # Align data
+        return np.nan, {}
     common_index = asset_returns_series.index.intersection(factor_df.index)
-    if len(common_index) < 20: # Need enough observations for regression
+    if len(common_index) < 20:
         print(f"Not enough common data points for factor regression on {asset_returns_series.name}")
         return np.nan, {}
-        
-    y = asset_returns_series.loc[common_index] - factor_df.loc[common_index, 'RF'] # Excess returns
+    y = asset_returns_series.loc[common_index] - factor_df.loc[common_index, 'RF']
     X = factor_df.loc[common_index, ['Mkt-RF', 'SMB', 'HML', 'WML']]
-    X = sm.add_constant(X) # Add intercept term for alpha
-    X.dropna(inplace=True) # Drop rows with NaNs in factors
-    y = y.loc[X.index] # Align y with X after dropping NaNs
-
+    X = sm.add_constant(X)
+    X.dropna(inplace=True)
+    y = y.loc[X.index]
     if len(y) < 20:
         print(f"Not enough data points after alignment for factor regression on {asset_returns_series.name}")
         return np.nan, {}
-        
     try:
         model = sm.OLS(y, X, missing='drop').fit()
-        alpha = model.params.get('const', np.nan) * 252 # Annualize alpha
+        alpha = model.params.get('const', np.nan) * 252
         betas = model.params.drop('const', errors='ignore').to_dict()
         return alpha, betas
     except Exception as e:
-        asset_name_for_log = asset_returns_series.name if isinstance(asset_returns_series, pd.Series) else str(asset_returns_series.columns[0]) if isinstance(asset_returns_series, pd.DataFrame) and not asset_returns_series.empty else "Unknown Asset"
+        asset_name_for_log = asset_returns_series.name if isinstance(asset_returns_series, pd.Series) else str(asset_returns_series.columns[0]) if isinstance(asset_returns_series, pd.DataFrame) else "unknown"
         print(f"Error in OLS regression for {asset_name_for_log}: {e}")
         return np.nan, {}
 
 def prever_retornos_arima(returns_series, order=(5,1,0)):
-    """Predicts next period return using ARIMA model."""
     if returns_series.empty or len(returns_series) < (sum(order) + 20):
         print(f"Not enough data points for ARIMA model on series: {returns_series.name}")
         return np.nan
@@ -488,9 +399,7 @@ def prever_retornos_arima(returns_series, order=(5,1,0)):
         forecast = model_fit.forecast(steps=1)
         return forecast.iloc[0]
     except Exception as e:
-        # Common errors: non-stationarity, convergence issues
         print(f"Error fitting ARIMA for {returns_series.name}: {e}. Trying auto_arima or simpler model.")
-        # Fallback to simpler model or auto_arima if pmdarima was installed
         try:
             model = ARIMA(returns_series, order=(1,1,0))
             model_fit = model.fit()
@@ -500,7 +409,6 @@ def prever_retornos_arima(returns_series, order=(5,1,0)):
             print(f"Fallback ARIMA failed for {returns_series.name}: {e2}")
             return np.nan
 
-# --- Portfolio Optimization ---
 def calcular_metricas_portfolio(pesos, retornos_medios_anuais, matriz_covariancia_anual, taxa_livre_risco):
     retorno_portfolio = np.sum(retornos_medios_anuais * pesos)
     volatilidade_portfolio = np.sqrt(np.dot(pesos.T, np.dot(matriz_covariancia_anual, pesos)))
@@ -508,83 +416,58 @@ def calcular_metricas_portfolio(pesos, retornos_medios_anuais, matriz_covarianci
     return retorno_portfolio, volatilidade_portfolio, sharpe_ratio
 
 def ajustar_retornos_esperados(base_retornos_medios_anuais, df_fundamental, alphas, arima_forecasts, quant_value_scores, piotroski_scores):
-    """Adjusts expected returns based on fundamental scores, alpha, and ARIMA forecasts."""
     adjusted_retornos = base_retornos_medios_anuais.copy()
     for ativo in adjusted_retornos.index:
         adjustment_factor = 1.0
-        # Piotroski Score: Higher is better. Scale score (0-9) to an adjustment factor.
         if piotroski_scores is not None and ativo in piotroski_scores and pd.notna(piotroski_scores[ativo]):
-            # Example: score of 0-2: 0.8, 3-4: 0.9, 5-6: 1.0, 7-9: 1.1-1.2
             pscore = piotroski_scores[ativo]
-            if pscore <= 2: adjustment_factor *= 0.9 # Penalize weak fundamentals
-            elif pscore >=7: adjustment_factor *= 1.1 # Reward strong fundamentals
-        
-        # Quant Value Score: Higher is better (assuming it's 0-1, higher means more undervalued)
+            if pscore <= 2: adjustment_factor *= 0.9
+            elif pscore >=7: adjustment_factor *= 1.1
         if quant_value_scores is not None and ativo in quant_value_scores and pd.notna(quant_value_scores[ativo]):
-            # Example: score > 0.7 adds 5%, score < 0.3 subtracts 5%
             qscore = quant_value_scores[ativo]
-            adjustment_factor *= (1 + (qscore - 0.5) * 0.2) # e.g. score 0 -> 0.9, 0.5 -> 1.0, 1.0 -> 1.1
-
+            adjustment_factor *= (1 + (qscore - 0.5) * 0.2)
         adjusted_retornos[ativo] *= adjustment_factor
-
-        # Add Alpha (already annualized)
         if alphas is not None and ativo in alphas and pd.notna(alphas[ativo]):
             adjusted_retornos[ativo] += alphas[ativo]
-        
-        # Add ARIMA forecast (this is tricky, as ARIMA forecasts 1-step ahead daily return)
-        # For simplicity, if ARIMA predicts a positive daily return, add a small kicker, if negative, a small drag.
-        # A more robust approach would be to use ARIMA to forecast for a longer horizon or incorporate its confidence.
         if arima_forecasts is not None and ativo in arima_forecasts and pd.notna(arima_forecasts[ativo]):
-            # Example: annualize the daily forecast and add a fraction of it
             annualized_arima_forecast = arima_forecasts[ativo] * 252
-            adjusted_retornos[ativo] = (adjusted_retornos[ativo] * 0.8) + (annualized_arima_forecast * 0.2) # Weighted average
-            
+            adjusted_retornos[ativo] = (adjusted_retornos[ativo] * 0.8) + (annualized_arima_forecast * 0.2)
     return adjusted_retornos
 
 def otimizar_portfolio_scipy(
     ativos,
     df_retornos_historicos,
-    df_fundamental_completo=None, # Contains all fundamental data including Piotroski, Quant Value
+    df_fundamental_completo=None,
     fama_french_factors=None,
     taxa_livre_risco=RISK_FREE_RATE_DEFAULT,
-    pesos_atuais=None, # Dict: {'ATIVO': peso_decimal}
-    restricoes_pesos_min_max=None, # Dict: {'ATIVO': (min_pct, max_pct)} or global (min_pct, max_pct)
-    objetivo='max_sharpe' # 'max_sharpe', 'min_volatility', 'target_return'
-    # target_return_value=None # if objetivo is 'target_return'
+    pesos_atuais=None,
+    restricoes_pesos_min_max=None,
+    objetivo='max_sharpe'
 ):
     if df_retornos_historicos.empty or len(ativos) == 0:
         return None, None, []
-    
     retornos_considerados = df_retornos_historicos[ativos].copy()
     if retornos_considerados.shape[1] != len(ativos) or retornos_considerados.isnull().values.any():
         print("Warning: Missing return data for some assets or all assets. Dropping NaNs.")
-        retornos_considerados.dropna(axis=1, how='all', inplace=True) # Drop columns that are all NaN
-        retornos_considerados.dropna(axis=0, how='any', inplace=True) # Drop rows with any NaN
+        retornos_considerados.dropna(axis=1, how='all', inplace=True)
+        retornos_considerados.dropna(axis=0, how='any', inplace=True)
         ativos = list(retornos_considerados.columns)
         if not ativos:
             print("Error: No valid asset data left after cleaning for optimization.")
             return None, None, []
-
     retornos_medios_diarios = retornos_considerados.mean()
     base_retornos_medios_anuais = retornos_medios_diarios * 252
     matriz_covariancia_diaria = retornos_considerados.cov()
     matriz_covariancia_anual_historica = matriz_covariancia_diaria * 252
     num_ativos = len(ativos)
-
-    # --- Advanced Adjustments ---
     adj_retornos_esperados = base_retornos_medios_anuais.copy()
     adj_matriz_covariancia = matriz_covariancia_anual_historica.copy()
-
     alphas = {}
     arima_forecasts = {}
     garch_volatilities = {}
-
     if df_fundamental_completo is not None and not df_fundamental_completo.empty:
-        # Calculate Piotroski and Quant Value scores if not already present
         if 'Piotroski_F_Score' not in df_fundamental_completo.columns:
             df_fundamental_completo['Piotroski_F_Score'] = df_fundamental_completo.apply(calcular_piotroski_f_score, axis=1)
-        
-        # Define metrics for Quant Value Score (example)
         vc_metrics = {
             'trailingPE': 'lower_is_better', 
             'priceToBook': 'lower_is_better', 
@@ -594,39 +477,20 @@ def otimizar_portfolio_scipy(
             'netMargin': 'higher_is_better'
         }
         if 'Quant_Value_Score' not in df_fundamental_completo.columns:
-             df_fundamental_completo['Quant_Value_Score'] = calcular_value_composite_score(df_fundamental_completo, vc_metrics)
-
+            df_fundamental_completo['Quant_Value_Score'] = calcular_value_composite_score(df_fundamental_completo, vc_metrics)
         piotroski_scores_series = df_fundamental_completo['Piotroski_F_Score'].reindex(ativos)
         quant_value_scores_series = df_fundamental_completo['Quant_Value_Score'].reindex(ativos)
-
-        # Filter assets based on fundamental scores (example: Piotroski >= 3)
-        # assets_to_keep_indices = piotroski_scores_series[piotroski_scores_series >= 3].index
-        # if len(assets_to_keep_indices) < num_ativos and len(assets_to_keep_indices) > 0:
-        #     print(f"Filtering assets based on Piotroski score. Kept: {list(assets_to_keep_indices)}")
-        #     ativos = list(assets_to_keep_indices)
-        #     retornos_considerados = retornos_considerados[ativos]
-        #     base_retornos_medios_anuais = base_retornos_medios_anuais.loc[ativos]
-        #     adj_matriz_covariancia = adj_matriz_covariancia.loc[ativos, ativos]
-        #     num_ativos = len(ativos)
-        # else:
-        #     print("Piotroski filter not applied or resulted in no assets.")
-
-        # Econometric adjustments
         for ativo in ativos:
             asset_returns = retornos_considerados[ativo].dropna()
             if fama_french_factors is not None and not fama_french_factors.empty:
                 alpha, _ = estimar_fatores_alpha_beta(asset_returns, fama_french_factors)
                 alphas[ativo] = alpha
-            
             arima_forecasts[ativo] = prever_retornos_arima(asset_returns)
             garch_vol = calcular_volatilidade_garch(asset_returns)
             if pd.notna(garch_vol) and garch_vol > 0:
-                # Replace diagonal of covariance matrix with GARCH forecasted vol (squared for variance)
-                # This is a simplification; a full GARCH-DCC model would be more robust for covariance.
                 if ativo in adj_matriz_covariancia.index:
                     adj_matriz_covariancia.loc[ativo, ativo] = garch_vol**2
                     garch_volatilities[ativo] = garch_vol
-        
         adj_retornos_esperados = ajustar_retornos_esperados(
             base_retornos_medios_anuais, 
             df_fundamental_completo.reindex(ativos),
@@ -637,42 +501,27 @@ def otimizar_portfolio_scipy(
         )
     else:
         print("No fundamental data or factors provided for advanced optimization. Using historical mean/covariance.")
-
-    # --- Optimization using SciPy Minimize ---
     def portfolio_volatility(weights, cov_matrix):
         return np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-
     def portfolio_return(weights, expected_returns):
         return np.sum(expected_returns * weights)
-
     def neg_sharpe_ratio(weights, expected_returns, cov_matrix, risk_free_rate):
         p_return = portfolio_return(weights, expected_returns)
         p_volatility = portfolio_volatility(weights, cov_matrix)
-        if p_volatility == 0: return -np.inf # Should be large positive due to negation
+        if p_volatility == 0: return -np.inf
         return -(p_return - risk_free_rate) / p_volatility
-
-    # Constraints
-    constraints = ({'type': 'eq', 'fun': lambda weights: np.sum(weights) - 1}) # Sum of weights = 1
-    
-    # Bounds for each weight (0 to 1 by default)
-    # Incorporate user-defined min/max per asset or global
+    constraints = ({'type': 'eq', 'fun': lambda weights: np.sum(weights) - 1})
     bounds = []
     default_min_b, default_max_b = 0.0, 1.0
     if isinstance(restricoes_pesos_min_max, tuple) and len(restricoes_pesos_min_max) == 2:
         default_min_b, default_max_b = restricoes_pesos_min_max[0], restricoes_pesos_min_max[1]
-
     for ativo in ativos:
         min_b, max_b = default_min_b, default_max_b
         if isinstance(restricoes_pesos_min_max, dict) and ativo in restricoes_pesos_min_max:
             min_b, max_b = restricoes_pesos_min_max[ativo]
-        elif pesos_atuais and ativo in pesos_atuais: # Use current weights to inform bounds if specific restrictions not given
-            # Example: allow deviation of +/- X% from current weight, capped by 0-1
-            # This needs careful definition based on user's intent for "ponto de partida"
-            pass # For now, simple 0-1 bounds unless specified
+        elif pesos_atuais and ativo in pesos_atuais:
+            pass
         bounds.append((min_b, max_b))
-    
-    # Initial guess for weights
-    # If pesos_atuais provided and sum to 1, use them. Otherwise, equal weights.
     initial_weights = np.array([1/num_ativos] * num_ativos)
     if pesos_atuais and len(pesos_atuais) == num_ativos:
         current_weights_array = np.array([pesos_atuais.get(a, 0) for a in ativos])
@@ -680,39 +529,22 @@ def otimizar_portfolio_scipy(
             initial_weights = current_weights_array
         else:
             print("Warning: Sum of provided current weights is not 1. Using equal initial weights.")
-
     if objetivo == 'max_sharpe':
         opt_args = (adj_retornos_esperados.values, adj_matriz_covariancia.values, taxa_livre_risco)
         opt_func = neg_sharpe_ratio
     elif objetivo == 'min_volatility':
         opt_args = (adj_matriz_covariancia.values,)
-        opt_func = lambda w, cov: portfolio_volatility(w, cov) # Directly minimize volatility
-    # elif objetivo == 'target_return':
-        # constraints = (
-        #     {'type': 'eq', 'fun': lambda weights: np.sum(weights) - 1},
-        #     {'type': 'eq', 'fun': lambda weights: portfolio_return(weights, adj_retornos_esperados.values) - target_return_value}
-        # )
-        # opt_args = (adj_matriz_covariancia.values,)
-        # opt_func = lambda w, cov: portfolio_volatility(w, cov)
+        opt_func = lambda w, cov: portfolio_volatility(w, cov)
     else:
         raise ValueError("Invalid objective function specified.")
-
     optimized_result = minimize(opt_func, initial_weights, args=opt_args,
                                 method='SLSQP', bounds=bounds, constraints=constraints)
-
     if not optimized_result.success:
         print(f"Optimization failed: {optimized_result.message}")
-        # Fallback to simpler simulation or return None
-        # For now, we'll return the (potentially non-optimal) weights if any
-        # return None, None, [] 
-
     optimal_weights = optimized_result.x
-    # Clean very small weights to zero
     optimal_weights[optimal_weights < 1e-4] = 0
-    optimal_weights = optimal_weights / np.sum(optimal_weights) # Re-normalize
-
+    optimal_weights = optimal_weights / np.sum(optimal_weights)
     ret_opt, vol_opt, sharpe_opt = calcular_metricas_portfolio(optimal_weights, adj_retornos_esperados, adj_matriz_covariancia, taxa_livre_risco)
-    
     portfolio_otimizado = {
         'pesos': dict(zip(ativos, optimal_weights)),
         'retorno_esperado': ret_opt,
@@ -722,54 +554,31 @@ def otimizar_portfolio_scipy(
         'alphas': alphas if alphas else None,
         'arima_forecasts': arima_forecasts if arima_forecasts else None
     }
+    fronteira_pontos_simulados = []
+    return portfolio_otimizado, fronteira_pontos_simulados
 
-    # For plotting the frontier, we'd typically vary target return and minimize volatility.
-    # The Monte Carlo simulation from the original code can still be used for visualization if needed.
-    # Here, we are returning a single optimized portfolio based on the objective.
-    # To generate a frontier with scipy, one would iterate `minimize` for different `target_return_value`s.
-    
-    # Placeholder for frontier points if needed by Streamlit app (can be generated via Monte Carlo or iterative optimization)
-    fronteira_pontos_simulados = [] 
-    # Example: Run a simple Monte Carlo for visualization if needed
-    # num_portfolios_simulados = 5000
-    # for _ in range(num_portfolios_simulados):
-    #     sim_weights = np.random.random(num_ativos)
-    #     sim_weights /= np.sum(sim_weights)
-    #     r, v, s = calcular_metricas_portfolio(sim_weights, adj_retornos_esperados, adj_matriz_covariancia, taxa_livre_risco)
-    #     fronteira_pontos_simulados.append({'retorno': r, 'volatilidade': v, 'sharpe': s, 'pesos': dict(zip(ativos, sim_weights))})
-
-    return portfolio_otimizado, fronteira_pontos_simulados # Returning single optimized portfolio and empty frontier for now
-
-# --- Original Markowitz (Monte Carlo) for comparison or baseline ---
 def otimizar_portfolio_markowitz_mc(ativos, df_retornos_historicos, taxa_livre_risco=RISK_FREE_RATE_DEFAULT, num_portfolios_simulados=10000):
     if df_retornos_historicos.empty or len(ativos) == 0:
         return None, None, []
-    
     retornos_considerados = df_retornos_historicos[ativos].copy()
-    # Ensure no NaN values in the columns being used for calculation
     retornos_considerados.dropna(axis=1, how='all', inplace=True)
     retornos_considerados.dropna(axis=0, how='any', inplace=True)
     ativos = list(retornos_considerados.columns)
     if not ativos:
         return None, None, []
-
     retornos_medios_diarios = retornos_considerados.mean()
     matriz_covariancia_diaria = retornos_considerados.cov()
     num_ativos_calc = len(ativos)
-
     retornos_medios_anuais = retornos_medios_diarios * 252
     matriz_covariancia_anual = matriz_covariancia_diaria * 252
-
     resultados_lista = []
     for _ in range(num_portfolios_simulados):
         pesos = np.random.random(num_ativos_calc)
         pesos /= np.sum(pesos)
         retorno, volatilidade, sharpe = calcular_metricas_portfolio(pesos, retornos_medios_anuais, matriz_covariancia_anual, taxa_livre_risco)
         resultados_lista.append({'retorno': retorno, 'volatilidade': volatilidade, 'sharpe': sharpe, 'pesos': dict(zip(ativos, pesos))})
-    
     if not resultados_lista:
         return None, None, []
-
     portfolio_max_sharpe_dict = max(resultados_lista, key=lambda x: x['sharpe'])
     portfolio_max_sharpe = {
         'pesos': portfolio_max_sharpe_dict['pesos'],
@@ -779,30 +588,24 @@ def otimizar_portfolio_markowitz_mc(ativos, df_retornos_historicos, taxa_livre_r
     }
     return portfolio_max_sharpe, resultados_lista
 
-# --- Allocation Suggestion (from original, can be kept or adapted) ---
 def sugerir_alocacao_novo_aporte(
     current_portfolio_composition_values: dict, 
     new_capital: float,
     target_portfolio_weights_decimal: dict,
 ):
-    # (Implementation from original script - can be used as is or adapted)
-    # ... (ensure this function is robust)
     if new_capital <= 1e-6: return {}, 0.0
     current_portfolio_value = sum(current_portfolio_composition_values.values())
     final_portfolio_value = current_portfolio_value + new_capital
     purchases_to_reach_target = {}
     all_involved_assets = set(current_portfolio_composition_values.keys()) | set(target_portfolio_weights_decimal.keys())
-
     for asset_ticker in all_involved_assets:
         current_asset_value = current_portfolio_composition_values.get(asset_ticker, 0.0)
         target_asset_final_value = target_portfolio_weights_decimal.get(asset_ticker, 0.0) * final_portfolio_value
         amount_to_buy = max(0, target_asset_final_value - current_asset_value)
         if amount_to_buy > 1e-6: purchases_to_reach_target[asset_ticker] = amount_to_buy
-
     total_capital_needed_for_target = sum(purchases_to_reach_target.values())
     actual_purchases = {}
     surplus_capital = 0.0
-
     if total_capital_needed_for_target <= 1e-6:
         relevant_target_assets = {t: w for t, w in target_portfolio_weights_decimal.items() if w > 1e-6}
         sum_target_weights_for_distribution = sum(relevant_target_assets.values())
@@ -823,7 +626,7 @@ def sugerir_alocacao_novo_aporte(
                 surplus_capital = 0.0
             else: surplus_capital = surplus_capital_after_reaching_target
         else: surplus_capital = 0.0
-    else: # total_capital_needed_for_target > new_capital
+    else:
         for asset_ticker, needed_amount in purchases_to_reach_target.items():
             actual_purchases[asset_ticker] = (needed_amount / total_capital_needed_for_target) * new_capital
         surplus_capital = 0.0
@@ -833,13 +636,9 @@ def sugerir_alocacao_novo_aporte(
 # --- Main execution block for testing ---
 if __name__ == '__main__':
     print("Running financial_analyzer_enhanced.py tests...")
-    test_ativos = ['AAPL', 'MSFT', 'GOOGL'] # Use US tickers for broader data availability with yfinance
-    # test_ativos_br = ['PETR4.SA', 'VALE3.SA', 'ITUB4.SA'] # For Brazilian assets
-    
-    start_date = (datetime.today() - timedelta(days=10*365)).strftime('%Y-%m-%d') # 10 years data
+    test_ativos = ['AAPL', 'MSFT', 'GOOGL']
+    start_date = (datetime.today() - timedelta(days=10*365)).strftime('%Y-%m-%d')
     end_date = datetime.today().strftime('%Y-%m-%d')
-
-    # 1. Test Historical Data Fetching
     print("\n--- Testing Historical Data ---")
     df_retornos = obter_dados_historicos_yf(test_ativos, start_date_str=start_date, end_date_str=end_date)
     if not df_retornos.empty:
@@ -847,15 +646,11 @@ if __name__ == '__main__':
         print(df_retornos.head())
     else:
         print("Failed to fetch historical returns.")
-
-    # 2. Test Fundamental Data Fetching
     print("\n--- Testing Fundamental Data ---")
     df_fund_data = obter_dados_fundamentalistas_detalhados(test_ativos)
     if not df_fund_data.empty:
         print(f"Successfully fetched fundamental data. Shape: {df_fund_data.shape}")
-        # Calculate Piotroski F-Score
         df_fund_data['Piotroski_F_Score'] = df_fund_data.apply(calcular_piotroski_f_score, axis=1)
-        # Calculate Value Composite Score
         vc_metrics_test = {
             'trailingPE': 'lower_is_better', 'priceToBook': 'lower_is_better', 
             'enterpriseToEbitda': 'lower_is_better', 'dividendYield': 'higher_is_better',
@@ -865,8 +660,6 @@ if __name__ == '__main__':
         print(df_fund_data[['ticker', 'Piotroski_F_Score', 'Quant_Value_Score']].head())
     else:
         print("Failed to fetch fundamental data.")
-
-    # 3. Test Fama-French Factor Proxies
     print("\n--- Testing Fama-French Factors ---")
     ff_factors = get_fama_french_factors(start_date, end_date)
     if not ff_factors.empty:
@@ -874,13 +667,9 @@ if __name__ == '__main__':
         print(ff_factors.head())
     else:
         print("Failed to fetch Fama-French factors.")
-
-    # 4. Test Advanced Optimization (SciPy based)
     print("\n--- Testing Advanced Portfolio Optimization (SciPy) ---")
     if not df_retornos.empty and not df_fund_data.empty and not ff_factors.empty:
-        # Ensure df_fund_data index is the ticker symbol for reindexing later
-        df_fund_data.set_index('ticker', inplace=True, drop=False) # Keep ticker column if needed elsewhere
-        
+        df_fund_data.set_index('ticker', inplace=True, drop=False)
         optimized_portfolio_advanced, _ = otimizar_portfolio_scipy(
             ativos=test_ativos,
             df_retornos_historicos=df_retornos,
@@ -893,15 +682,13 @@ if __name__ == '__main__':
             print("Advanced Optimized Portfolio (Max Sharpe):")
             for k, v in optimized_portfolio_advanced.items():
                 if k == 'pesos': print(f"  {k}: { {tk: f'{p*100:.2f}%' for tk,p in v.items()} }")
-                elif isinstance(v, dict): print(f"  {k}: Present") # For dicts like garch_volatilities
+                elif isinstance(v, dict): print(f"  {k}: Present")
                 elif isinstance(v, float): print(f"  {k}: {v:.4f}")
                 else: print(f"  {k}: {v}")
         else:
             print("Advanced portfolio optimization failed.")
     else:
         print("Skipping advanced optimization test due to missing data (returns, fundamentals, or factors).")
-
-    # 5. Test Original Markowitz (Monte Carlo)
     print("\n--- Testing Original Markowitz Optimization (Monte Carlo) ---")
     if not df_retornos.empty:
         portfolio_sharpe_mc, _ = otimizar_portfolio_markowitz_mc(test_ativos, df_retornos, taxa_livre_risco=RISK_FREE_RATE_DEFAULT)
@@ -915,7 +702,4 @@ if __name__ == '__main__':
             print("MC portfolio optimization failed.")
     else:
         print("Skipping MC optimization test due to missing return data.")
-
     print("\nfinancial_analyzer_enhanced.py tests completed.")
-
-
