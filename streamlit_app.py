@@ -428,45 +428,40 @@ if run_analysis:
         st.info("Nenhuma carteira para comparar.")
 
     # ---- SUGESTÃO DE ALOCAÇÃO PARA NOVO APORTE: Fronteira Markowitz + Quant Value ----
+    # ... (processamento da análise, coleta de dados, otimizações, etc.) ...
+    # SUGESTÃO DE ALOCAÇÃO PARA NOVO APORTE: Fronteira Markowitz + Quant Value
     if novo_capital_input > 0 and carteiras_comparativo_lista and not df_fundamental_completo.empty:
         st.header("Sugestão de Alocação para Novo Aporte (Fronteira Markowitz + Quant Value)")
-        # Pegue os pesos do Markowitz MC
         carteira_markowitz = next((c for c in carteiras_comparativo_lista if c['Nome'].startswith('Otimizada Markowitz')), None)
         if carteira_markowitz and 'Pesos' in carteira_markowitz['Dados']:
-            # FORÇAR AS CHAVES PARA STRING PARA EVITAR ERRO DE TUPLA
+            # Garante string simples na chave
             pesos_markowitz = {key_to_str(k): v for k, v in carteira_markowitz['Dados']['Pesos'].items()}
-            ativos_escolhidos = [a for a in pesos_markowitz.keys() if a in [key_to_str(idx) for idx in ativos_filtrados.index]]
             quant_value = df_fundamental_completo['Quant_Value_Score']
             ativos_quant = quant_value.dropna().sort_values(ascending=False)
-            # Filtro top N e nota mínima
             ativos_filtrados = ativos_quant
             if top_n_quant_value > 0:
                 ativos_filtrados = ativos_filtrados.head(top_n_quant_value)
             if min_quant_value > 0:
                 ativos_filtrados = ativos_filtrados[ativos_filtrados >= min_quant_value]
-            ativos_escolhidos = [a for a in pesos_markowitz.keys() if a in ativos_filtrados.index]
+            ativos_filtrados_index = [key_to_str(idx) for idx in ativos_filtrados.index]
+            ativos_escolhidos = [a for a in pesos_markowitz.keys() if a in ativos_filtrados_index]
             if not ativos_escolhidos:
                 st.warning("Nenhum ativo atende ao critério Quant Value escolhido. Usando todos os da Fronteira Markowitz.")
                 ativos_escolhidos = list(pesos_markowitz.keys())
-            # Redistribua os pesos só entre os escolhidos
             pesos_filtrados = {a: pesos_markowitz[a] for a in ativos_escolhidos}
             soma_pesos = sum(pesos_filtrados.values())
             pesos_final = {a: p/soma_pesos for a, p in pesos_filtrados.items()}
-            st.write(f"Ativos selecionados pelo Quant Value: {', '.join(ativos_escolhidos)}")
+            st.write(f"Ativos selecionados pelo Quant Value: {', '.join(map(str, ativos_escolhidos))}")
             compras_sugeridas, capital_excedente = sugerir_alocacao_novo_aporte(
                 current_portfolio_composition_values=carteira_atual_composicao_valores,
                 new_capital=novo_capital_input,
                 target_portfolio_weights_decimal=pesos_final
             )
             if compras_sugeridas:
-                st.subheader("Valores a Comprar por Ativo (R$):")
-                # Força a coluna Ativo a ser string simples
                 df_compras = pd.DataFrame([
                     (key_to_str(k), v) for k, v in compras_sugeridas.items()
                 ], columns=["Ativo", "Valor a Comprar"])
-
                 st.dataframe(df_compras.sort_values("Valor a Comprar", ascending=False).style.format({"Valor a Comprar": "{:.2f}"}), use_container_width=True)
-                
             else:
                 st.write("Nenhuma compra sugerida (já alinhado ou aporte muito pequeno).")
             if capital_excedente > 0.01:
