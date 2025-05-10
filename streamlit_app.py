@@ -371,4 +371,4 @@ if run_analysis:
             pesos_atuais_para_otim = {a: pesos_carteira_decimal.get(a, 0.0) for a in ativos_para_otimizar}
             soma_pesos_atuais_otim = sum(pesos_atuais_para_otim.values())
             if np.isclose(soma_pesos_atuais_otim, 1.0) and soma_pesos_atuais_otim > 0:
-                 pesos_iniciais_otim = pesos_atuais_para_oti
+                 pesos_iniciais_otim = pesos_atuais_para_otim
