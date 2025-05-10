@@ -1,4 +1,3 @@
-# streamlit_app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -411,24 +410,31 @@ if run_analysis:
                     plot_portfolio_pie_chart(c['Pesos'], c_data['Nome'])
     else:
         st.info("Nenhuma carteira para comparar.")
-    if novo_capital_input > 0 and portfolio_avancado and 'pesos' in portfolio_avancado:
+    # ---- SUGESTÃO DE ALOCAÇÃO PARA NOVO APORTE ----
+    if novo_capital_input > 0 and carteiras_comparativo_lista:
         st.header("Sugestão de Alocação para Novo Aporte")
-        st.write(f"Considerando a carteira 'Otimizada Avançada (Quant+Econo)' como alvo e um novo aporte de R$ {novo_capital_input:.2f}.")
-        compras_sugeridas, capital_excedente = sugerir_alocacao_novo_aporte(
-            current_portfolio_composition_values=carteira_atual_composicao_valores,
-            new_capital=novo_capital_input,
-            target_portfolio_weights_decimal=portfolio_avancado['pesos']
+        opcoes_carteira_alvo = [c['Nome'] for c in carteiras_comparativo_lista]
+        carteira_alvo_nome = st.selectbox(
+            "Escolha a carteira alvo para rebalanceamento/aporte",
+            options=opcoes_carteira_alvo,
+            index=opcoes_carteira_alvo.index('Otimizada Avançada (Quant+Econo)') if 'Otimizada Avançada (Quant+Econo)' in opcoes_carteira_alvo else 0
         )
-        if compras_sugeridas:
-            st.subheader("Valores a Comprar por Ativo (R$):")
-            df_compras = pd.DataFrame(list(compras_sugeridas.items()), columns=["Ativo", "Valor a Comprar"])
-            st.table(df_compras.style.format({"Valor a Comprar": "{:.2f}"}))
-        else:
-            st.write("Nenhuma compra específica sugerida para o novo aporte para atingir os pesos da carteira avançada (pode já estar alinhado ou o novo aporte é distribuído proporcionalmente).")
-        if capital_excedente > 0.01:
-            st.write(f"Capital excedente após tentativa de alocação para os pesos alvo: R$ {capital_excedente:.2f}")
-        elif not compras_sugeridas and novo_capital_input > 0:
-            st.write(f"Todo o novo capital (R$ {novo_capital_input:.2f}) é considerado excedente ou distribuído para manter os pesos alvo.")
+        carteira_alvo = next((c for c in carteiras_comparativo_lista if c['Nome'] == carteira_alvo_nome), None)
+        if carteira_alvo and 'Pesos' in carteira_alvo['Dados']:
+            st.write(f"Considerando a carteira '{carteira_alvo_nome}' como alvo e um novo aporte de R$ {novo_capital_input:.2f}.")
+            compras_sugeridas, capital_excedente = sugerir_alocacao_novo_aporte(
+                current_portfolio_composition_values=carteira_atual_composicao_valores,
+                new_capital=novo_capital_input,
+                target_portfolio_weights_decimal=carteira_alvo['Dados']['Pesos']
+            )
+            if compras_sugeridas:
+                st.subheader("Valores a Comprar por Ativo (R$):")
+                df_compras = pd.DataFrame(list(compras_sugeridas.items()), columns=["Ativo", "Valor a Comprar"])
+                st.table(df_compras.style.format({"Valor a Comprar": "{:.2f}"}))
+            else:
+                st.write("Nenhuma compra específica sugerida para o novo aporte para atingir os pesos da carteira alvo (pode já estar alinhado ou o novo aporte é distribuído proporcionalmente).")
+            if capital_excedente > 0.01:
+                st.write(f"Capital excedente após tentativa de alocação para os pesos alvo: R$ {capital_excedente:.2f}")
     st.success("Análise concluída!")
 else:
     st.info("Ajuste os parâmetros na barra lateral e clique em 'Executar Análise Avançada'.")
