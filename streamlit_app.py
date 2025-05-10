@@ -16,7 +16,7 @@ try:
         calcular_piotroski_f_score_br,
         calcular_value_composite_score,
         get_fama_french_factors,
-        Beneish_M_Score,
+        beneish_m_score,
         calcular_altman_z_score,
         otimizar_portfolio_scipy,
         otimizar_portfolio_markowitz_mc,
