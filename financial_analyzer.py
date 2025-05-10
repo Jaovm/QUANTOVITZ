@@ -1,4 +1,3 @@
-
 import pandas as pd
 import numpy as np
 import yfinance as yf  # Nova dependência para integrar o Yahoo Finance
@@ -147,7 +146,7 @@ def sugerir_alocacao_novo_aporte(
     current_portfolio_composition_values: dict, # {'PETR4': 40000, 'VALE3': 60000}
     new_capital: float,
     target_portfolio_weights_decimal: dict, # {'PETR4': 0.5, 'VALE3': 0.3, 'MGLU3': 0.2}
-    # quant_scores_df: pd.DataFrame = None # Para futura priorização
+    quant_scores_df: pd.DataFrame = None # Agora pode ser passado para priorização
 ):
     if new_capital <= 1e-6: # Consider small new_capital as no aport
         return {}, 0.0 # No allocation, no surplus
@@ -203,16 +202,27 @@ def sugerir_alocacao_novo_aporte(
         else:
             surplus_capital = 0.0
     else: # total_capital_needed_for_target > new_capital
-        # Not enough capital. Distribute available new_capital proportionally to needed amounts.
-        # TODO: Consider Quant-Value for prioritization here if quant_scores_df is provided.
-        for asset_ticker, needed_amount in purchases_to_reach_target.items():
-            actual_purchases[asset_ticker] = (needed_amount / total_capital_needed_for_target) * new_capital
+        # Não há capital suficiente. Priorizar usando quant value se disponível.
+        if quant_scores_df is not None and not quant_scores_df.empty:
+            ativos_para_priorizar = list(purchases_to_reach_target.keys())
+            quant_scores = quant_scores_df.set_index('Ticker').reindex(ativos_para_priorizar)['Quant Score']
+            quant_scores = quant_scores.fillna(0).clip(lower=0)
+            if quant_scores.sum() > 0:
+                for asset_ticker in ativos_para_priorizar:
+                    score = quant_scores.get(asset_ticker, 0)
+                    actual_purchases[asset_ticker] = (score / quant_scores.sum()) * new_capital
+            else:
+                for asset_ticker, needed_amount in purchases_to_reach_target.items():
+                    actual_purchases[asset_ticker] = (needed_amount / total_capital_needed_for_target) * new_capital
+        else:
+            # Se não tem quant value, cai no caso antigo
+            for asset_ticker, needed_amount in purchases_to_reach_target.items():
+                actual_purchases[asset_ticker] = (needed_amount / total_capital_needed_for_target) * new_capital
         surplus_capital = 0.0
 
     actual_purchases = {k: v for k, v in actual_purchases.items() if v > 0.01} # Filter to amounts > 1 cent
 
     return actual_purchases, surplus_capital
-
 
 if __name__ == '__main__':
     # Exemplo de uso das funções:
@@ -260,7 +270,8 @@ if __name__ == '__main__':
         compras_sugeridas, capital_excedente = sugerir_alocacao_novo_aporte(
             current_portfolio_values_ex,
             new_capital_ex,
-            target_weights_decimal_ex
+            target_weights_decimal_ex,
+            quant_value_scores_exemplo # Passar quant value para priorização
         )
         print("\n--- Sugestão de Alocação para Novo Aporte (R$) ---")
         if compras_sugeridas:
