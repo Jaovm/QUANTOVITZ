@@ -1,3 +1,4 @@
+
 import pandas as pd
 import numpy as np
 import yfinance as yf  # Nova dependência para integrar o Yahoo Finance
@@ -78,7 +79,7 @@ def calcular_probabilidade_retorno(retornos_historicos_list):
     positivos = sum(1 for r in retornos_historicos_list if r > 0)
     return positivos / len(retornos_historicos_list)
 
-def simular_dados_historicos_retornos(ativos, periodos=1260):
+def simular_dados_historicos_retornos(ativos, periodos=252):
     np.random.seed(42)
     retornos_simulados = {}
     for ativo in ativos:
@@ -142,6 +143,75 @@ def otimizar_portfolio_markowitz(ativos, df_retornos_historicos, taxa_livre_risc
     
     return portfolio_max_sharpe, portfolio_max_retorno, resultados_lista
 
+def sugerir_alocacao_novo_aporte(
+    current_portfolio_composition_values: dict, # {'PETR4': 40000, 'VALE3': 60000}
+    new_capital: float,
+    target_portfolio_weights_decimal: dict, # {'PETR4': 0.5, 'VALE3': 0.3, 'MGLU3': 0.2}
+    # quant_scores_df: pd.DataFrame = None # Para futura priorização
+):
+    if new_capital <= 1e-6: # Consider small new_capital as no aport
+        return {}, 0.0 # No allocation, no surplus
+
+    current_portfolio_value = sum(current_portfolio_composition_values.values())
+    final_portfolio_value = current_portfolio_value + new_capital
+
+    purchases_to_reach_target = {}
+    # Consider all assets present in current portfolio or target portfolio
+    all_involved_assets = set(current_portfolio_composition_values.keys()) | set(target_portfolio_weights_decimal.keys())
+
+    for asset_ticker in all_involved_assets:
+        current_asset_value = current_portfolio_composition_values.get(asset_ticker, 0.0)
+        target_asset_final_value = target_portfolio_weights_decimal.get(asset_ticker, 0.0) * final_portfolio_value
+        
+        amount_to_buy = max(0, target_asset_final_value - current_asset_value)
+        if amount_to_buy > 1e-6: # Use a small epsilon for float comparisons
+            purchases_to_reach_target[asset_ticker] = amount_to_buy
+
+    total_capital_needed_for_target = sum(purchases_to_reach_target.values())
+    
+    actual_purchases = {}
+    surplus_capital = 0.0
+
+    if total_capital_needed_for_target <= 1e-6: 
+        # No specific purchases needed to reach target weights (e.g., already optimal or overweighted in needed assets)
+        # Distribute all new_capital according to target_portfolio_weights_decimal for assets in target_portfolio_weights_decimal.
+        relevant_target_assets = {t: w for t, w in target_portfolio_weights_decimal.items() if w > 1e-6}
+        sum_target_weights_for_distribution = sum(relevant_target_assets.values())
+
+        if sum_target_weights_for_distribution > 1e-6:
+            for asset_ticker, weight in relevant_target_assets.items():
+                actual_purchases[asset_ticker] = (weight / sum_target_weights_for_distribution) * new_capital
+        else:
+            # If no positive target weights, all new capital is surplus (or could be distributed equally if desired)
+            surplus_capital = new_capital
+    elif total_capital_needed_for_target <= new_capital:
+        # Enough capital to make all desired purchases to reach target.
+        actual_purchases = purchases_to_reach_target.copy()
+        surplus_capital_after_reaching_target = new_capital - total_capital_needed_for_target
+        
+        if surplus_capital_after_reaching_target > 1e-6:
+            # Distribute surplus according to target_weights_decimal
+            relevant_target_assets = {t: w for t, w in target_portfolio_weights_decimal.items() if w > 1e-6}
+            sum_target_weights_for_distribution = sum(relevant_target_assets.values())
+            if sum_target_weights_for_distribution > 1e-6:
+                for asset_ticker, weight in relevant_target_assets.items():
+                    additional_buy = (weight / sum_target_weights_for_distribution) * surplus_capital_after_reaching_target
+                    actual_purchases[asset_ticker] = actual_purchases.get(asset_ticker, 0) + additional_buy
+                surplus_capital = 0.0 # Surplus has been distributed
+            else:
+                surplus_capital = surplus_capital_after_reaching_target # Surplus remains
+        else:
+            surplus_capital = 0.0
+    else: # total_capital_needed_for_target > new_capital
+        # Not enough capital. Distribute available new_capital proportionally to needed amounts.
+        # TODO: Consider Quant-Value for prioritization here if quant_scores_df is provided.
+        for asset_ticker, needed_amount in purchases_to_reach_target.items():
+            actual_purchases[asset_ticker] = (needed_amount / total_capital_needed_for_target) * new_capital
+        surplus_capital = 0.0
+
+    actual_purchases = {k: v for k, v in actual_purchases.items() if v > 0.01} # Filter to amounts > 1 cent
+
+    return actual_purchases, surplus_capital
 
 
 if __name__ == '__main__':
@@ -190,8 +260,7 @@ if __name__ == '__main__':
         compras_sugeridas, capital_excedente = sugerir_alocacao_novo_aporte(
             current_portfolio_values_ex,
             new_capital_ex,
-            target_weights_decimal_ex,
-            quant_value_scores_exemplo # Passar quant value para priorização
+            target_weights_decimal_ex
         )
         print("\n--- Sugestão de Alocação para Novo Aporte (R$) ---")
         if compras_sugeridas:
