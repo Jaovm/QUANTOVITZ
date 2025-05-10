@@ -298,8 +298,10 @@ if run_analysis:
             else:
                 st.warning("Não foi possível calcular métricas para a carteira atual devido a dados insuficientes após o processamento.")
         else:
-            st.warning("Dados de retorno ausentes para alguns ativos da carteira atual: {set(ativos_carteira_lista) - set(df_retornos_historicos.columns)}. Métricas da carteira atual não calculadas[...]
-    
+        st.warning(
+            f"Dados de retorno ausentes para alguns ativos da carteira atual: {set(ativos_carteira_lista) - set(df_retornos_historicos.columns)}. "
+            "Métricas da carteira atual não calculadas."
+        )
     ativos_para_otimizar = todos_ativos_analise.copy()
     if not df_fundamental_completo.empty and 'Piotroski_F_Score' in df_fundamental_completo.columns and min_piotroski_score > 0:
         ativos_filtrados_piotroski = df_fundamental_completo[df_fundamental_completo['Piotroski_F_Score'] >= min_piotroski_score].index.tolist()
