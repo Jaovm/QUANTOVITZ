@@ -1,4 +1,4 @@
-```python
+
 import pandas as pd
 import numpy as np
 # from scipy.optimize import minimize # Importação comentada pois não será usada na simulação inicial
