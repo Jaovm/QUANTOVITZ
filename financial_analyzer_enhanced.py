@@ -419,7 +419,7 @@ def get_fama_french_factors(start_date, end_date, risk_free_rate_series=None):
     else:
         factors_df['RF'] = risk_free_rate_series
     
-    factors_df.fillna(method='ffill', inplace=True) # Fill NaNs in RF if any
+    factors_df.ffill(inplace=True) # Fill NaNs in RF if any # Fill NaNs in RF if any
     factors_df.dropna(inplace=True) # Drop any remaining NaNs after join
 
     # Mkt-RF
