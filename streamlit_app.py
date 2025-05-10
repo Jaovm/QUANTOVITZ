@@ -12,7 +12,7 @@ st.title("Painel Avançado de Otimização de Carteira QUANTOVITZ")
 try:
     from financial_analyzer_enhanced import (
         obter_dados_historicos_yf,
-        obter_dados_fundamentalistas_detalhados,
+        obter_dados_fundamentalistas_detalhados_br,
         calcular_piotroski_f_score,
         calcular_value_composite_score,
         get_fama_french_factors,
@@ -253,7 +253,7 @@ if run_analysis:
             df_fundamental_completo['Piotroski_F_Score'] = df_fundamental_completo.apply(calcular_piotroski_f_score, axis=1)
             df_fundamental_completo['Quant_Value_Score'] = calcular_value_composite_score(df_fundamental_completo, vc_metrics_config)
             st.subheader("Dados Fundamentalistas e Scores")
-            st.dataframe(df_fundamental_completo[['ticker', 'Piotroski_F_Score', 'Quant_Value_Score'] + vc_metrics_selection].head(len(todos_ativos_analise)).style.format(precision=2, na_rep='-'))
+            st.dataframe(df_fundamental_completo[['ticker', 'Piotroski_F_Score', 'Altman_Z_Score', 'Beneish_M_Score', 'Quant_Value_Score'] + vc_metrics_selection].head(len(todos_ativos_analise)).style.format(precision=2, na_rep='-'))
         else:
             st.warning("Não foi possível obter dados fundamentalistas. A otimização avançada pode ser limitada.")
         ff_start_date = (pd.to_datetime(start_date_analise) - timedelta(days=30)).strftime("%Y-%m-%d")
