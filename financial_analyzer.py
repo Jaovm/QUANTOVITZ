@@ -1,21 +1,29 @@
 
 import pandas as pd
 import numpy as np
-# from scipy.optimize import minimize # Importação comentada pois não será usada na simulação inicial
+import yfinance as yf  # Nova dependência para integrar o Yahoo Finance
 
-# Simulação de dados fundamentalistas (substituir por dados reais ou API)
+# Função atualizada para obter dados fundamentalistas usando o Yahoo Finance
 def obter_dados_fundamentalistas(ativos):
-    # Esta função simula a obtenção de dados. Em um cenário real, você usaria uma API.
-    dados = {
-        'PETR4': {'ROE': 0.15, 'EV/EBIT': 8, 'P/L': 10, 'DY': 0.05},
-        'VALE3': {'ROE': 0.20, 'EV/EBIT': 6, 'P/L': 8, 'DY': 0.06},
-        'ITUB4': {'ROE': 0.18, 'EV/EBIT': 7, 'P/L': 9, 'DY': 0.04},
-        'MGLU3': {'ROE': -0.05, 'EV/EBIT': -15, 'P/L': -12, 'DY': 0.01},
-        'VIIA3': {'ROE': -0.10, 'EV/EBIT': -20, 'P/L': -10, 'DY': 0.005}
-    }
-    data_for_ativos = {ativo: dados.get(ativo, {})
-                       for ativo in ativos}
-    return pd.DataFrame.from_dict(data_for_ativos, orient='index')
+    """
+    Obtém dados fundamentalistas das ações usando Yahoo Finance.
+    """
+    dados_fundamentalistas = {}
+    for ativo in ativos:
+        try:
+            ticker = yf.Ticker(ativo)
+            info = ticker.info
+            dados_fundamentalistas[ativo] = {
+                'ROE': info.get('returnOnEquity', None),
+                'EV/EBIT': info.get('enterpriseToEbitda', None),
+                'P/L': info.get('trailingPE', None),
+                'DY': info.get('dividendYield', None)
+            }
+        except Exception as e:
+            print(f"Erro ao obter dados para {ativo}: {e}")
+    
+    # Convertendo para DataFrame
+    return pd.DataFrame.from_dict(dados_fundamentalistas, orient='index')
 
 def calcular_quant_value(ativos_selecionados, pesos_metricas, dados_fundamentalistas):
     # Assegura que dados_fundamentalistas é um DataFrame e tem os ativos como índice
@@ -192,18 +200,16 @@ def sugerir_alocacao_novo_aporte(
 
 
 if __name__ == '__main__':
-    # Exemplo de uso das funções:
-    ativos_carteira_exemplo = ['PETR4', 'VALE3', 'ITUB4']
-    ativos_candidatos_exemplo = ['MGLU3', 'VIIA3']
+    # Exemplo de uso atualizado:
+    ativos_carteira_exemplo = ['PETR4.SA', 'VALE3.SA', 'ITUB4.SA']
+    ativos_candidatos_exemplo = ['MGLU3.SA', 'VIIA3.SA']
     todos_ativos_exemplo = list(set(ativos_carteira_exemplo + ativos_candidatos_exemplo))
-
-    # Dados Fundamentalistas e Quant-Value
-    pesos_metricas_exemplo = {'ROE': 0.4, 'EV/EBIT': 0.3, 'P/L': 0.2, 'DY': 0.1}
+    
+    # Obter dados fundamentalistas reais
     df_fundamentalistas_exemplo = obter_dados_fundamentalistas(todos_ativos_exemplo)
-    df_fundamentalistas_exemplo.index.name = 'Ticker' # Definindo nome do índice
-    quant_value_scores_exemplo = calcular_quant_value(todos_ativos_exemplo, pesos_metricas_exemplo, df_fundamentalistas_exemplo)
-    print("Score Quant-Value dos Ativos (Exemplo):")
-    print(quant_value_scores_exemplo)
+    df_fundamentalistas_exemplo.index.name = 'Ticker'
+    print("Dados Fundamentalistas (Reais):")
+    print(df_fundamentalistas_exemplo)
 
     # Simular dados de retornos históricos para todos os ativos relevantes
     df_retornos_historicos_exemplo = simular_dados_historicos_retornos(todos_ativos_exemplo)
