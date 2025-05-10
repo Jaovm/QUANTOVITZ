@@ -323,7 +323,7 @@ if run_analysis:
     # Garante que retorna bool puro, mesmo se for DataFrame
         resultado = df[coluna].notnull().any()
     # resultado pode ser bool, Series ou DataFrame!
-         if isinstance(resultado, (pd.Series, pd.DataFrame)):
+        if isinstance(resultado, (pd.Series, pd.DataFrame)):
             return resultado.any() if hasattr(resultado, "any") else bool(resultado)
         return bool(resultado)
 
