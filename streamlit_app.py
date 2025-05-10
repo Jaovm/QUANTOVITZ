@@ -174,6 +174,29 @@ def plot_portfolio_pie_chart(weights_dict, title):
     fig.update_traces(textposition='inside', textinfo='percent+label')
     st.plotly_chart(fig, use_container_width=True)
 
+def coluna_tem_dados_validos(df, coluna):
+    """Retorna True se a coluna existe e tem pelo menos um valor não nulo."""
+    return (coluna in df.columns) and df[coluna].notnull().any()
+
+# Bloco de filtro corrigido
+if not df_fundamental_completo.empty and 'Piotroski_F_Score' in df_fundamental_completo.columns and min_piotroski_score > 0:
+    ativos_filtrados_piotroski = df_fundamental_completo[df_fundamental_completo['Piotroski_F_Score'] >= min_piotroski_score].index.tolist()
+    if ativos_filtrados_piotroski:
+        st.info(f"Ativos após filtro Piotroski (>= {min_piotroski_score}): {', '.join(ativos_filtrados_piotroski)}")
+        # Garantir que os ativos filtrados ainda têm dados de retorno válidos
+        ativos_para_otimizar = [a for a in ativos_filtrados_piotroski if coluna_tem_dados_validos(df_retornos_historicos, a)]
+        if not ativos_para_otimizar:
+            st.warning("Nenhum ativo restou após o filtro Piotroski e verificação de dados de retorno. Usando todos os ativos para otimização.")
+            ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
+    else:
+        st.warning(f"Nenhum ativo atendeu ao critério Piotroski F-Score >= {min_piotroski_score}. Usando todos os ativos para otimização.")
+        ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
+else:
+    ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
+    if not ativos_para_otimizar:
+        st.error("Nenhum ativo válido restante para otimização após filtros e verificação de dados. Análise interrompida.")
+        st.stop()
+        
 def display_comparative_table(carteiras_data):
     if not carteiras_data:
         st.write("Não há dados de carteiras para comparar.")
@@ -313,28 +336,7 @@ if run_analysis:
     
     # Ativos para otimização (pode ser filtrado por Piotroski)
     # Função robusta para checar se a coluna existe e tem dados válidos
-def coluna_tem_dados_validos(df, coluna):
-    """Retorna True se a coluna existe e tem pelo menos um valor não nulo."""
-    return (coluna in df.columns) and df[coluna].notnull().any()
 
-# Bloco de filtro corrigido
-if not df_fundamental_completo.empty and 'Piotroski_F_Score' in df_fundamental_completo.columns and min_piotroski_score > 0:
-    ativos_filtrados_piotroski = df_fundamental_completo[df_fundamental_completo['Piotroski_F_Score'] >= min_piotroski_score].index.tolist()
-    if ativos_filtrados_piotroski:
-        st.info(f"Ativos após filtro Piotroski (>= {min_piotroski_score}): {', '.join(ativos_filtrados_piotroski)}")
-        # Garantir que os ativos filtrados ainda têm dados de retorno válidos
-        ativos_para_otimizar = [a for a in ativos_filtrados_piotroski if coluna_tem_dados_validos(df_retornos_historicos, a)]
-        if not ativos_para_otimizar:
-            st.warning("Nenhum ativo restou após o filtro Piotroski e verificação de dados de retorno. Usando todos os ativos para otimização.")
-            ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
-    else:
-        st.warning(f"Nenhum ativo atendeu ao critério Piotroski F-Score >= {min_piotroski_score}. Usando todos os ativos para otimização.")
-        ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
-else:
-    ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
-    if not ativos_para_otimizar:
-        st.error("Nenhum ativo válido restante para otimização após filtros e verificação de dados. Análise interrompida.")
-        st.stop()
     
     st.write(f"Ativos efetivamente usados na otimização: {', '.join(ativos_para_otimizar)}")
     df_retornos_otim = df_retornos_historicos[ativos_para_otimizar].copy().dropna(how='any') # Drop rows with any NaNs for robustness
