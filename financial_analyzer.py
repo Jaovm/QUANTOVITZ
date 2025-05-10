@@ -2,7 +2,22 @@
 import pandas as pd
 import numpy as np
 import yfinance as yf  # Nova dependência para integrar o Yahoo Finance
+from datetime import datetime
 
+# ... (demais funções inalteradas)
+
+def obter_dados_historicos_retornos_yf(ativos, start_date="2015-01-01", end_date=None):
+    """
+    Obtém retornos diários dos ativos via Yahoo Finance desde uma data inicial.
+    """
+    if end_date is None:
+        end_date = datetime.today().strftime('%Y-%m-%d')
+    df_prices = yf.download(ativos, start=start_date, end=end_date)['Adj Close']
+    if isinstance(df_prices, pd.Series):
+        df_prices = df_prices.to_frame()
+    df_retornos = df_prices.pct_change().dropna()
+    return df_retornos
+    
 # Função atualizada para obter dados fundamentalistas usando o Yahoo Finance
 def obter_dados_fundamentalistas(ativos):
     """
@@ -200,19 +215,21 @@ def sugerir_alocacao_novo_aporte(
 
 
 if __name__ == '__main__':
-    # Exemplo de uso atualizado:
+    # Exemplo de uso das funções:
     ativos_carteira_exemplo = ['PETR4.SA', 'VALE3.SA', 'ITUB4.SA']
     ativos_candidatos_exemplo = ['MGLU3.SA', 'VIIA3.SA']
     todos_ativos_exemplo = list(set(ativos_carteira_exemplo + ativos_candidatos_exemplo))
-    
-    # Obter dados fundamentalistas reais
+
+    # Dados fundamentalistas e Quant-Value
+    pesos_metricas_exemplo = {'ROE': 0.4, 'EV/EBIT': 0.3, 'P/L': 0.2, 'DY': 0.1}
     df_fundamentalistas_exemplo = obter_dados_fundamentalistas(todos_ativos_exemplo)
     df_fundamentalistas_exemplo.index.name = 'Ticker'
-    print("Dados Fundamentalistas (Reais):")
-    print(df_fundamentalistas_exemplo)
+    quant_value_scores_exemplo = calcular_quant_value(todos_ativos_exemplo, pesos_metricas_exemplo, df_fundamentalistas_exemplo)
+    print("Score Quant-Value dos Ativos (Exemplo):")
+    print(quant_value_scores_exemplo)
 
-    # Simular dados de retornos históricos para todos os ativos relevantes
-    df_retornos_historicos_exemplo = simular_dados_historicos_retornos(todos_ativos_exemplo)
+    # Obter dados reais de retornos históricos (A PARTIR DE 01/01/2015)
+    df_retornos_historicos_exemplo = obter_dados_historicos_retornos_yf(todos_ativos_exemplo, start_date="2015-01-01")
 
     # Calcular probabilidade de retorno
     probabilidades_retorno_exemplo = {}
@@ -224,9 +241,8 @@ if __name__ == '__main__':
         print(f"- {ativo}: {prob:.2%}")
 
     # Otimizar portfólio (usando todos os ativos para a otimização, por exemplo)
-    # A escolha de quais ativos entram na otimização depende da estratégia do usuário
     portfolio_sharpe, portfolio_retorno, _ = otimizar_portfolio_markowitz(todos_ativos_exemplo, df_retornos_historicos_exemplo)
-
+    
     if portfolio_sharpe:
         print("\n--- Portfólio com Maior Sharpe Ratio (Simulado) ---")
         for ativo, peso in portfolio_sharpe['pesos'].items():
