@@ -16,7 +16,7 @@ try:
         simular_dados_historicos_retornos, 
         calcular_probabilidade_retorno,
         otimizar_portfolio_markowitz,
-        calcular_metricas_portfolio
+        calcular_metricas_portfolio,
         sugerir_alocacao_novo_aporte
     )
 except ImportError:
