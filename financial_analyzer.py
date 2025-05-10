@@ -94,7 +94,7 @@ def otimizar_portfolio_markowitz(ativos, df_retornos_historicos, taxa_livre_risc
     retornos_medios_anuais = retornos_medios_diarios * 252
     matriz_covariancia_anual = matriz_covariancia_diaria * 252
 
-    num_portfolios_simulados = 5000 # Reduzido para performance em simulação
+    num_portfolios_simulados = 100000 # Reduzido para performance em simulação
     resultados_lista = [] # Lista para armazenar dicionários de resultados
     pesos_portfolios = []
 
