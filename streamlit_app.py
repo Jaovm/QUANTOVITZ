@@ -247,7 +247,7 @@ if run_analysis:
         if df_retornos_historicos.empty or df_retornos_historicos.shape[0] < 60:
             st.error(f"Não foi possível obter dados históricos suficientes para {', '.join(todos_ativos_analise)} no período especificado. Verifique os tickers e o período.")
             st.stop()
-        df_fundamental_completo = obter_dados_fundamentalistas_detalhados(todos_ativos_analise)
+        df_fundamental_completo = obter_dados_fundamentalistas_detalhados_br(todos_ativos_analise)
         if not df_fundamental_completo.empty:
             df_fundamental_completo.set_index('ticker', inplace=True, drop=False)
             df_fundamental_completo['Piotroski_F_Score'] = df_fundamental_completo.apply(calcular_piotroski_f_score, axis=1)
