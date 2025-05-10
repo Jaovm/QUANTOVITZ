@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
+from backtest_ibov import obter_dados_historicos_retornos_yf, calcular_cagr
 
 st.set_page_config(layout="wide")
 st.title("Painel de Otimização de Carteira de Investimentos")
