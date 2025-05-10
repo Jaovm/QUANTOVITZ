@@ -318,8 +318,8 @@ if run_analysis:
         
     # 3. Filtro de ativos para otimização
     def coluna_tem_dados_validos(df, coluna):
-        return (coluna in df.columns) and df[coluna].notnull().any()
-
+        return bool((coluna in df.columns) and df[coluna].notnull().any())
+        
     if (
         not df_fundamental_completo.empty
         and 'Piotroski_F_Score' in df_fundamental_completo.columns
@@ -336,8 +336,9 @@ if run_analysis:
             ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
     else:
         st.warning(f"Nenhum ativo atendeu ao critério Piotroski F-Score >= {min_piotroski_score}. Usando todos os ativos para otimização.")
-        ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
-
+        ativos_para_otimizar = [
+        a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)
+    ]
     if len(ativos_para_otimizar) == 0:
         st.error("Nenhum ativo válido restante para otimização após filtros e verificação de dados. Análise interrompida.")
         st.stop()
