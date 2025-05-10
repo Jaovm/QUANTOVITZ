@@ -434,8 +434,8 @@ if run_analysis:
         carteira_markowitz = next((c for c in carteiras_comparativo_lista if c['Nome'].startswith('Otimizada Markowitz')), None)
         if carteira_markowitz and 'Pesos' in carteira_markowitz['Dados']:
             # FORÇAR AS CHAVES PARA STRING PARA EVITAR ERRO DE TUPLA
-            pesos_markowitz = {str(k): v for k, v in carteira_markowitz['Dados']['Pesos'].items()}
-            # Pegue os scores Quant Value
+            pesos_markowitz = {key_to_str(k): v for k, v in carteira_markowitz['Dados']['Pesos'].items()}
+            ativos_escolhidos = [a for a in pesos_markowitz.keys() if a in [key_to_str(idx) for idx in 
             quant_value = df_fundamental_completo['Quant_Value_Score']
             ativos_quant = quant_value.dropna().sort_values(ascending=False)
             # Filtro top N e nota mínima
