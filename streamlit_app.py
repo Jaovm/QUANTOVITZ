@@ -5,6 +5,8 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
+st.set_page_config(layout="wide")
+st.title("Painel de Otimização de Carteira de Investimentos")
 # Importar funções do financial_analyzer.py
 # Supondo que financial_analyzer.py está no mesmo diretório ou no PYTHONPATH
 try:
@@ -32,8 +34,6 @@ except ImportError:
     def sugerir_alocacao_novo_aporte(current_portfolio_values, new_capital, target_weights):
         return {}, 0.0
 
-st.set_page_config(layout="wide")
-st.title("Painel de Otimização de Carteira de Investimentos")
 
 # --- Entradas do Usuário na Sidebar ---
 st.sidebar.header("Entradas do Usuário")
