@@ -122,6 +122,11 @@ min_quant_value = st.sidebar.slider(
 
 run_analysis = st.sidebar.button("Executar Análise Avançada")
 
+def key_to_str(k):
+    if isinstance(k, tuple):
+        return k[0]
+    return str(k)
+    
 def plot_efficient_frontier_comparative(fronteiras_data, portfolios_otimizados, carteira_atual_metricas=None):
     if not any(f["pontos"] for f in fronteiras_data):
         st.write("Não foi possível gerar dados para a Fronteira Eficiente.")
