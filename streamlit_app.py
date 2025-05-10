@@ -252,6 +252,8 @@ if run_analysis:
             df_fundamental_completo.set_index('ticker', inplace=True, drop=False)
             df_fundamental_completo['Piotroski_F_Score'] = df_fundamental_completo.apply(calcular_piotroski_f_score_br, axis=1)
             df_fundamental_completo['Quant_Value_Score'] = calcular_value_composite_score(df_fundamental_completo, vc_metrics_config)
+            df_fundamental_completo['Altman_Z_Score'] = df_fundamental_completo.apply(calcular_altman_z_score, axis=1)
+            df_fundamental_completo['Beneish_M_Score'] = df_fundamental_completo.apply(calcular_beneish_m_score, axis=1)
             st.subheader("Dados Fundamentalistas e Scores")
             st.dataframe(df_fundamental_completo[['ticker', 'Piotroski_F_Score', 'Altman_Z_Score', 'Beneish_M_Score', 'Quant_Value_Score'] + vc_metrics_selection].head(len(todos_ativos_analise)).style.format(precision=2, na_rep='-'))
         else:
