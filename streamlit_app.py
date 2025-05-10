@@ -339,7 +339,7 @@ if run_analysis:
             ativos=ativos_validos_mc,
             df_retornos_historicos=df_retornos_mc,
             taxa_livre_risco=taxa_livre_risco_input,
-            num_portfolios_simulados=10000
+            num_portfolios_simulados=500000
         )
         if portfolio_markowitz_mc:
             carteiras_comparativo_lista.append({
