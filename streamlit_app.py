@@ -13,7 +13,7 @@ try:
     from financial_analyzer_enhanced import (
         obter_dados_historicos_yf,
         obter_dados_fundamentalistas_detalhados_br,
-        calcular_piotroski_f_score_br,
+        calcular_piotroski_f_score,
         calcular_value_composite_score,
         get_fama_french_factors,
         otimizar_portfolio_scipy,
