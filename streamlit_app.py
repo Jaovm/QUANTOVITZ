@@ -312,22 +312,26 @@ if run_analysis:
             st.warning(f"Dados de retorno ausentes para alguns ativos da carteira atual: {set(ativos_carteira_lista) - set(df_retornos_historicos.columns)}. Métricas da carteira atual não calculadas.")
     
     # Ativos para otimização (pode ser filtrado por Piotroski)
-    ativos_para_otimizar = todos_ativos_analise.copy()
-    if not df_fundamental_completo.empty and 'Piotroski_F_Score' in df_fundamental_completo.columns and min_piotroski_score > 0:
-        ativos_filtrados_piotroski = df_fundamental_completo[df_fundamental_completo['Piotroski_F_Score'] >= min_piotroski_score].index.tolist()
-        if ativos_filtrados_piotroski:
-            st.info(f"Ativos após filtro Piotroski (>= {min_piotroski_score}): {', '.join(ativos_filtrados_piotroski)}")
-            # Garantir que os ativos filtrados ainda têm dados de retorno
-            ativos_para_otimizar = [a for a in ativos_filtrados_piotroski if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all()]
-            if not ativos_para_otimizar:
-                st.warning("Nenhum ativo restou após o filtro Piotroski e verificação de dados de retorno. Usando todos os ativos para otimização.")
-                ativos_para_otimizar = [a for a in todos_ativos_analise if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all()]
-        else:
-            st.warning(f"Nenhum ativo atendeu ao critério Piotroski F-Score >= {min_piotroski_score}. Usando todos os ativos para otimização.")
-            ativos_para_otimizar = [a for a in todos_ativos_analise if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all()]
-    else:
-         ativos_para_otimizar = [a for a in todos_ativos_analise if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all()]
+    # Função robusta para checar se a coluna existe e tem dados válidos
+def coluna_tem_dados_validos(df, coluna):
+    """Retorna True se a coluna existe e tem pelo menos um valor não nulo."""
+    return (coluna in df.columns) and df[coluna].notnull().any()
 
+# Bloco de filtro corrigido
+if not df_fundamental_completo.empty and 'Piotroski_F_Score' in df_fundamental_completo.columns and min_piotroski_score > 0:
+    ativos_filtrados_piotroski = df_fundamental_completo[df_fundamental_completo['Piotroski_F_Score'] >= min_piotroski_score].index.tolist()
+    if ativos_filtrados_piotroski:
+        st.info(f"Ativos após filtro Piotroski (>= {min_piotroski_score}): {', '.join(ativos_filtrados_piotroski)}")
+        # Garantir que os ativos filtrados ainda têm dados de retorno válidos
+        ativos_para_otimizar = [a for a in ativos_filtrados_piotroski if coluna_tem_dados_validos(df_retornos_historicos, a)]
+        if not ativos_para_otimizar:
+            st.warning("Nenhum ativo restou após o filtro Piotroski e verificação de dados de retorno. Usando todos os ativos para otimização.")
+            ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
+    else:
+        st.warning(f"Nenhum ativo atendeu ao critério Piotroski F-Score >= {min_piotroski_score}. Usando todos os ativos para otimização.")
+        ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
+else:
+    ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
     if not ativos_para_otimizar:
         st.error("Nenhum ativo válido restante para otimização após filtros e verificação de dados. Análise interrompida.")
         st.stop()
