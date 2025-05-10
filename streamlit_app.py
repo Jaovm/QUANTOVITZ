@@ -88,8 +88,11 @@ VC_METRIC_DIRECTIONS = {
 vc_metrics_config = {metric: VC_METRIC_DIRECTIONS[metric] for metric in vc_metrics_selection if metric in VC_METRIC_DIRECTIONS}
 
 # Filtro por Piotroski F-Score
-min_piotroski_score = st.sidebar.slider("Piotroski F-Score Mínimo para Inclusão de Ativos", 0, 9, 0, help="Ativos com score abaixo deste valor podem ser excluídos da otimização avançada. 0 para [...]
-
+min_piotroski_score = st.sidebar.slider(
+    "Piotroski F-Score Mínimo para Inclusão de Ativos", 
+    0, 9, 0, 
+    help="Ativos com score abaixo deste valor podem ser excluídos da otimização avançada. 0 para não filtrar."
+)
 # Restrições de Peso na Otimização
 st.sidebar.subheader("7. Restrições de Alocação (Otimização)")
 min_aloc_global = st.sidebar.slider("Alocação Mínima Global por Ativo (%)", 0, 40, 0, help="Restrição inferior para cada ativo na carteira otimizada.") / 100.0
