@@ -483,8 +483,8 @@ else:
 
     st.success("Análise concluída!")
 
-else:
-    st.info("Ajuste os parâmetros na barra lateral e clique em 'Executar Análise Avançada'.")
+    else:
+        st.info("Ajuste os parâmetros na barra lateral e clique em 'Executar Análise Avançada'.")
 
 # Adicionar uma seção de log ou mensagens de depuração (opcional)
 # st.sidebar.text_area("Log de Mensagens", "", height=100)
