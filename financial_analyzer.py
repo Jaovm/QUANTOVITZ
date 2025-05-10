@@ -250,4 +250,3 @@ if __name__ == '__main__':
             print(f"Capital excedente após alocação: R$ {capital_excedente:.2f}")
         elif not compras_sugeridas and new_capital_ex > 0:
              print(f"Todo o novo capital (R$ {new_capital_ex:.2f}) é excedente ou não há alvos claros.")
-```
