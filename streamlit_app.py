@@ -340,7 +340,7 @@ if run_analysis:
              if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all().item()
          ]
 
-     if not ativos_para_otimizar:
+    if not ativos_para_otimizar:
         st.error("Nenhum ativo válido restante para otimização após filtros e verificação de dados. Análise interrompida.")
         st.stop()
     
