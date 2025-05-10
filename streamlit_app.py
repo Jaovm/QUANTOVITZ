@@ -317,18 +317,30 @@ if run_analysis:
         ativos_filtrados_piotroski = df_fundamental_completo[df_fundamental_completo['Piotroski_F_Score'] >= min_piotroski_score].index.tolist()
         if ativos_filtrados_piotroski:
             st.info(f"Ativos após filtro Piotroski (>= {min_piotroski_score}): {', '.join(ativos_filtrados_piotroski)}")
-            # Garantir que os ativos filtrados ainda têm dados de retorno
-            ativos_para_otimizar = [a for a in ativos_filtrados_piotroski if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all()]
+        # Garantir que os ativos filtrados ainda têm dados de retorno
+            ativos_para_otimizar = [
+                a for a in ativos_filtrados_piotroski
+                if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all().item()
+            ]
             if not ativos_para_otimizar:
                 st.warning("Nenhum ativo restou após o filtro Piotroski e verificação de dados de retorno. Usando todos os ativos para otimização.")
-                ativos_para_otimizar = [a for a in todos_ativos_analise if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all()]
+                ativos_para_otimizar = [
+                    a for a in todos_ativos_analise
+                    if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all().item()
+                ]
         else:
             st.warning(f"Nenhum ativo atendeu ao critério Piotroski F-Score >= {min_piotroski_score}. Usando todos os ativos para otimização.")
-            ativos_para_otimizar = [a for a in todos_ativos_analise if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all()]
+            ativos_para_otimizar = [
+                a for a in todos_ativos_analise
+                if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all().item()
+            ]
     else:
-         ativos_para_otimizar = [a for a in todos_ativos_analise if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all()]
+         ativos_para_otimizar = [
+             a for a in todos_ativos_analise
+             if a in df_retornos_historicos.columns and not df_retornos_historicos[a].isnull().all().item()
+         ]
 
-    if not ativos_para_otimizar:
+     if not ativos_para_otimizar:
         st.error("Nenhum ativo válido restante para otimização após filtros e verificação de dados. Análise interrompida.")
         st.stop()
     
