@@ -78,7 +78,7 @@ def calcular_probabilidade_retorno(retornos_historicos_list):
     positivos = sum(1 for r in retornos_historicos_list if r > 0)
     return positivos / len(retornos_historicos_list)
 
-def simular_dados_historicos_retornos(ativos, periodos=252):
+def simular_dados_historicos_retornos(ativos, periodos=1260):
     np.random.seed(42)
     retornos_simulados = {}
     for ativo in ativos:
