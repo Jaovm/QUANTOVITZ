@@ -257,7 +257,12 @@ if run_analysis:
             df_fundamental_completo['Altman_Z_Score'] = df_fundamental_completo.apply(calcular_altman_z_score, axis=1)
             df_fundamental_completo['Beneish_M_Score'] = df_fundamental_completo.apply(calcular_beneish_m_score, axis=1)
             st.subheader("Dados Fundamentalistas e Scores")
-            st.dataframe(df_fundamental_completo[['ticker', 'Piotroski_F_Score', 'Altman_Z_Score', 'Beneish_M_Score', 'Quant_Value_Score'] + vc_metrics_selection].head(len(todos_ativos_analise)).style.format(precision=2, na_rep='-'))
+            colunas_desejadas = [
+                'ticker', 'Piotroski_F_Score', 'Quant_Value_Score',
+                'Altman_Z_Score', 'Beneish_M_Score', 'enterpriseToEbitda', 'netMargin'
+            ]
+            colunas_presentes = [c for c in colunas_desejadas if c in df_fundamental_completo.columns]
+            st.dataframe(df_fundamental_completo[colunas_presentes])
         else:
             st.warning("Não foi possível obter dados fundamentalistas. A otimização avançada pode ser limitada.")
         ff_start_date = (pd.to_datetime(start_date_analise) - timedelta(days=30)).strftime("%Y-%m-%d")
