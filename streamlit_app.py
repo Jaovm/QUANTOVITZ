@@ -311,7 +311,7 @@ if run_analysis:
         st.error("Dados de retorno insuficientes para os ativos de otimização após limpeza. Análise interrompida.")
         st.stop()
     # Monte Carlo Markowitz robusto
-    ativos_validos_mc = [a for a in ativos_para_otimizar if a in df_retornos_otim.columns and not df_retornos_otim[a].isnull().all()]
+    ativos_validos_mc = [a for a in ativos_para_otimizar if a in df_retornos_otim.columns and not bool(df_retornos_otim[a].isnull().all())]
     if not ativos_validos_mc:
         st.error("Nenhum ativo válido com dados históricos suficientes para Monte Carlo.")
         st.stop()
