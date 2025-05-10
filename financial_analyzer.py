@@ -79,7 +79,7 @@ def calcular_probabilidade_retorno(retornos_historicos_list):
     positivos = sum(1 for r in retornos_historicos_list if r > 0)
     return positivos / len(retornos_historicos_list)
 
-def simular_dados_historicos_retornos(ativos, periodos=1260):
+def simular_dados_historicos_retornos(ativos, periodos=2520):
     np.random.seed(42)
     retornos_simulados = {}
     for ativo in ativos:
@@ -106,10 +106,10 @@ def otimizar_portfolio_markowitz(ativos, df_retornos_historicos, taxa_livre_risc
     matriz_covariancia_diaria = retornos_considerados.cov()
     num_ativos = len(ativos)
 
-    retornos_medios_anuais = retornos_medios_diarios * 252
-    matriz_covariancia_anual = matriz_covariancia_diaria * 252
+    retornos_medios_anuais = retornos_medios_diarios * 2520
+    matriz_covariancia_anual = matriz_covariancia_diaria * 2520
 
-    num_portfolios_simulados = 100000 # Reduzido para performance em simulação
+    num_portfolios_simulados = 90000 # Reduzido para performance em simulação
     resultados_lista = [] # Lista para armazenar dicionários de resultados
     pesos_portfolios = []
 
