@@ -186,7 +186,7 @@ def obter_dados_fundamentalistas_detalhados_br(ativos):
         df_fund[col] = pd.to_numeric(df_fund[col], errors='ignore')
     return df_fund
 
-def calcular_piotroski_f_score_br_br(row, verbose=False):
+def calcular_piotroski_f_score_br(row, verbose=False):
     """
     Calcula o Piotroski F-Score e retorna score e detalhamento dos critérios para empresas brasileiras.
     Parâmetros:
