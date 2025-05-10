@@ -455,7 +455,12 @@ if run_analysis:
             )
             if compras_sugeridas:
                 st.subheader("Valores a Comprar por Ativo (R$):")
-                df_compras = pd.DataFrame(list(compras_sugeridas.items()), columns=["Ativo", "Valor a Comprar"])
+                # Força a coluna Ativo a ser string simples
+                df_compras = pd.DataFrame([
+                    (key_to_str(k), v) for k, v in compras_sugeridas.items()
+                ], columns=["Ativo", "Valor a Comprar"])
+
+                st.dataframe(df_compras.sort_values("Valor a Comprar", ascending=False).style.format({"Valor a Comprar": "{:.2f}"}), use_container_width=True)
                 st.table(df_compras.style.format({"Valor a Comprar": "{:.2f}"}))
             else:
                 st.write("Nenhuma compra sugerida (já alinhado ou aporte muito pequeno).")
