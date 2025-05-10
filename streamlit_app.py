@@ -104,8 +104,11 @@ manter_pesos_atuais_opcao = st.sidebar.selectbox(
     options=["Não considerar", "Como ponto de partida", "Como restrição inferior aproximada", "Como restrição de intervalo"],
     index=1, help="Define como os pesos da carteira atual informada são usados na otimização avançada."
 )
-tolerancia_peso_atual = st.sidebar.slider("Tolerância para Restrição de Peso Atual (% do peso atual)", 0, 100, 20, help="Usado se 'Como restrição de intervalo' for selecionado. Ex: 20% -> peso_at[...]
-
+tolerancia_peso_atual = st.sidebar.slider(
+    "Tolerância para Restrição de Peso Atual (% do peso atual)",
+    0, 100, 20,
+    help="Usado se 'Como restrição de intervalo' for selecionado. Ex: 20% -> peso_atual*0.8 a peso_atual*1.2."
+)
 # Botão para executar a análise
 run_analysis = st.sidebar.button("Executar Análise Avançada")
 
