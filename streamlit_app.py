@@ -105,7 +105,7 @@ def plot_asset_return_probabilities(probabilities_dict):
     fig = px.bar(df_probs, x='Ativo', y='Probabilidade de Retorno Positivo',
                  title='Probabilidade de Retorno Positivo por Ativo (%)',
                  labels={'Probabilidade de Retorno Positivo': 'Probabilidade (%)', 'Ativo': 'Ativo'},
-                 color='Probabilidade de Retorno Positivo', color_continuous_scale=px.colors.sequential.RdYlGn,
+                 color='Probabilidade de Retorno Positivo', color_continuous_scale=px.colors.sequential.Viridis,
                  range_color=[0,100])
     fig.update_layout(yaxis_range=[0,100])
     st.plotly_chart(fig, use_container_width=True)
