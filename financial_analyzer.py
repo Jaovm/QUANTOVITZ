@@ -106,8 +106,8 @@ def otimizar_portfolio_markowitz(ativos, df_retornos_historicos, taxa_livre_risc
     matriz_covariancia_diaria = retornos_considerados.cov()
     num_ativos = len(ativos)
 
-    retornos_medios_anuais = retornos_medios_diarios * 2520
-    matriz_covariancia_anual = matriz_covariancia_diaria * 2520
+    retornos_medios_anuais = retornos_medios_diarios * 252
+    matriz_covariancia_anual = matriz_covariancia_diaria * 252
 
     num_portfolios_simulados = 90000 # Reduzido para performance em simulação
     resultados_lista = [] # Lista para armazenar dicionários de resultados
