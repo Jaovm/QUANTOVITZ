@@ -318,8 +318,15 @@ if run_analysis:
         
     # 3. Filtro de ativos para otimização
     def coluna_tem_dados_validos(df, coluna):
-        return bool((coluna in df.columns) and df[coluna].notnull().any())
-        
+        if coluna not in df.columns:
+            return False
+    # Garante que retorna bool puro, mesmo se for DataFrame
+        resultado = df[coluna].notnull().any()
+    # resultado pode ser bool, Series ou DataFrame!
+         if isinstance(resultado, (pd.Series, pd.DataFrame)):
+            return resultado.any() if hasattr(resultado, "any") else bool(resultado)
+        return bool(resultado)
+
     if (
         not df_fundamental_completo.empty
         and 'Piotroski_F_Score' in df_fundamental_completo.columns
