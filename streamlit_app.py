@@ -329,8 +329,8 @@ if run_analysis:
             df_fundamental_completo['Piotroski_F_Score'] >= min_piotroski_score
         ].index.tolist()
         if len(ativos_filtrados_piotroski) > 0:
-        st.info(f"Ativos após filtro Piotroski (>= {min_piotroski_score}): {', '.join(ativos_filtrados_piotroski)}")
-        ativos_para_otimizar = [a for a in ativos_filtrados_piotroski if coluna_tem_dados_validos(df_retornos_historicos, a)]
+            st.info(f"Ativos após filtro Piotroski (>= {min_piotroski_score}): {', '.join(ativos_filtrados_piotroski)}")
+            ativos_para_otimizar = [a for a in ativos_filtrados_piotroski if coluna_tem_dados_validos(df_retornos_historicos, a)]
         if len(ativos_para_otimizar) == 0:
             st.warning("Nenhum ativo restou após o filtro Piotroski e verificação de dados de retorno. Usando todos os ativos para otimização.")
             ativos_para_otimizar = [a for a in todos_ativos_analise if coluna_tem_dados_validos(df_retornos_historicos, a)]
