@@ -89,7 +89,7 @@ min_piotroski_score = st.sidebar.slider(
     help="Ativos com score abaixo deste valor podem ser excluídos da otimização avançada. 0 para não filtrar."
 )
 
-
+mostrar_detalhes_piotroski = st.sidebar.checkbox("Mostrar detalhes dos critérios do Piotroski F-Score")
             
 # 7. Restrições de Peso na Otimização
 st.sidebar.subheader("7. Restrições de Alocação (Otimização)")
@@ -215,7 +215,12 @@ def display_comparative_table(carteiras_data):
         pesos_data_list.append(row)
     df_pesos_detalhados = pd.DataFrame(pesos_data_list).set_index('Nome')
     st.dataframe(df_pesos_detalhados.style.format("{:.2f}"))
-
+    
+if mostrar_detalhes_piotroski:
+    detalhes_df = df_fundamental_completo['Piotroski_F_Detalhes'].apply(pd.Series)
+    detalhes_df['ticker'] = df_fundamental_completo['ticker'].values
+    st.dataframe(detalhes_df.set_index('ticker'))
+    
 if run_analysis:
     st.header("Resultados da Análise Avançada")
     ativos_carteira_lista_raw = [s.strip().upper() for s in ativos_input_str.split(',') if s.strip()]
