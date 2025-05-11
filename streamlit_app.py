@@ -267,6 +267,10 @@ if run_analysis:
             ]
             colunas_presentes = [c for c in colunas_desejadas if c in df_fundamental_completo.columns]
             st.dataframe(df_fundamental_completo[colunas_presentes])
+            if st.checkbox("Mostrar detalhes dos critérios do Piotroski F-Score"):
+                detalhes_df = df_fundamental_completo['Piotroski_F_Detalhes'].apply(pd.Series)
+                detalhes_df['ticker'] = df_fundamental_completo['ticker'].values
+                st.dataframe(detalhes_df.set_index('ticker'))
         else:
             st.warning("Não foi possível obter dados fundamentalistas. A otimização avançada pode ser limitada.")
 
@@ -484,8 +488,4 @@ if run_analysis:
 else:
     st.info("Ajuste os parâmetros na barra lateral e clique em 'Executar Análise Avançada'.")
 
-st.sidebar("critérios")
-if st.checkbox("Mostrar detalhes dos critérios do Piotroski F-Score"):
-detalhes_df = df_fundamental_completo['Piotroski_F_Detalhes'].apply(pd.Series)
-detalhes_df['ticker'] = df_fundamental_completo['ticker'].values
-st.dataframe(detalhes_df.set_index('ticker'))
+
