@@ -89,6 +89,11 @@ min_piotroski_score = st.sidebar.slider(
     help="Ativos com score abaixo deste valor podem ser excluídos da otimização avançada. 0 para não filtrar."
 )
 
+if st.checkbox("Mostrar detalhes dos critérios do Piotroski F-Score"):
+    detalhes_df = df_fundamental_completo['Piotroski_F_Detalhes'].apply(pd.Series)
+    detalhes_df['ticker'] = df_fundamental_completo['ticker'].values
+    st.dataframe(detalhes_df.set_index('ticker'))
+            
 # 7. Restrições de Peso na Otimização
 st.sidebar.subheader("7. Restrições de Alocação (Otimização)")
 min_aloc_global = st.sidebar.slider(
@@ -267,10 +272,7 @@ if run_analysis:
             st.dataframe(df_fundamental_completo[colunas_presentes])
         else:
             st.warning("Não foi possível obter dados fundamentalistas. A otimização avançada pode ser limitada.")
-        if st.checkbox("Mostrar detalhes dos critérios do Piotroski F-Score"):
-            detalhes_df = df_fundamental_completo['Piotroski_F_Detalhes'].apply(pd.Series)
-            detalhes_df['ticker'] = df_fundamental_completo['ticker'].values
-            st.dataframe(detalhes_df.set_index('ticker'))
+
         ff_start_date = (pd.to_datetime(start_date_analise) - timedelta(days=30)).strftime("%Y-%m-%d")
         fama_french_factors_df = get_fama_french_factors(ff_start_date, end_date_analise)
         if fama_french_factors_df.empty:
