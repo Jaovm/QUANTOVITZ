@@ -504,7 +504,7 @@ def preencher_campos_faltantes_brapi(row):
         return row  # Sem ticker, não faz nada
 
     try:
-        url = f"https://brapi.dev/api/quote/{ticker}?fundamental=true"
+        url = f"https://brapi.dev/api/quote/{ticker}?token=2D29LijXrSGRJAQ7De5bUh"
         resp = requests.get(url, timeout=10)
         if resp.status_code != 200:
             return row
