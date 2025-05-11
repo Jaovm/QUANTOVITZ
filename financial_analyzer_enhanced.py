@@ -166,7 +166,7 @@ def obter_dados_fundamentalistas_detalhados_br(ativos):
         # INTEGRAÇÃO (mock) com Brapi para complementar dados de empresas da B3
         try:
             # Exemplo: https://brapi.dev/api/quote/PETR4.SA?fundamental=true
-            url_brapi = f"https://brapi.dev/api/quote/{ativo}?fundamental=true"
+            url_brapi = f"https://brapi.dev/api/quote/{ativo}?token=2D29LijXrSGRJAQ7De5bUh"
             r = requests.get(url_brapi, timeout=3)
             if r.status_code == 200:
                 brapi_data = r.json()['results'][0].get('fundamental', {})
