@@ -3,6 +3,7 @@
 
 import pandas as pd
 import numpy as np
+import requests
 import yfinance as yf
 from datetime import datetime, timedelta
 import json
@@ -521,6 +522,87 @@ def ajustar_retornos_esperados(base_retornos_medios_anuais, df_fundamental, alph
             adjusted_retornos[ativo] = (adjusted_retornos[ativo] * 0.8) + (annualized_arima_forecast * 0.2)
     return adjusted_retornos
 
+def preencher_campos_faltantes_brapi(row):
+    """
+    Preenche campos críticos do Piotroski usando a API Brapi se estiverem ausentes.
+    Espera um campo 'ticker' no row.
+    """
+    ticker = row.get('ticker')
+    if not ticker:
+        return row  # Sem ticker, não faz nada
+
+    try:
+        url = f"https://brapi.dev/api/quote/{ticker}?fundamental=true"
+        resp = requests.get(url, timeout=10)
+        if resp.status_code != 200:
+            return row
+        data = resp.json()
+        if 'results' not in data or not data['results']:
+            return row
+        dados = data['results'][0]
+
+        # CFO (Cash Flow from Operations)
+        if pd.isna(row.get('cfo_atual')) or row.get('cfo_atual') is None:
+            cfo = None
+            if 'cashFlowStatement' in dados and 'operatingCashFlow' in dados['cashFlowStatement']:
+                cfo = dados['cashFlowStatement']['operatingCashFlow']
+            elif 'operatingCashFlow' in dados:
+                cfo = dados['operatingCashFlow']
+            if cfo is not None:
+                try:
+                    row['cfo_atual'] = float(str(cfo).replace('.', '').replace(',', '.'))
+                except:
+                    pass
+
+        # Ações emitidas (sharesOutstanding)
+        if (pd.isna(row.get('acoes_emitidas_atual')) or row.get('acoes_emitidas_atual') is None):
+            shares = dados.get('shares') or dados.get('numberOfShares')
+            if shares is not None:
+                try:
+                    row['acoes_emitidas_atual'] = float(str(shares).replace('.', '').replace(',', '.'))
+                except:
+                    pass
+
+        # Ativos/Passivos Circulantes para Liquidez Corrente
+        if (pd.isna(row.get('ativos_circulantes_atual')) or row.get('ativos_circulantes_atual') is None) and 'currentAssets' in dados:
+            try:
+                row['ativos_circulantes_atual'] = float(str(dados['currentAssets']).replace('.', '').replace(',', '.'))
+            except:
+                pass
+        if (pd.isna(row.get('passivos_circulantes_atual')) or row.get('passivos_circulantes_atual') is None) and 'currentLiabilities' in dados:
+            try:
+                row['passivos_circulantes_atual'] = float(str(dados['currentLiabilities']).replace('.', '').replace(',', '.'))
+            except:
+                pass
+
+        # (Opcional) Futuramente, inclua lógica para buscar valores do ano anterior, se conseguir fonte.
+
+    except Exception as e:
+        print(f"[Brapi] Falha para {ticker}: {e}")
+
+    return row
+
+def converter_campos_piotroski(df):
+    """
+    Converte todos os campos usados no Piotroski F-Score para float, se existirem no DataFrame.
+    """
+    piotroski_fields = [
+        'lucro_liquido_atual', 'lucro_liquido_anterior', 'NI_curr', 'NI_prev', 'NetIncome_curr', 'NetIncome_prev',
+        'receita_liquida_atual', 'receita_liquida_anterior', 'Revenue_curr', 'Revenue_prev', 'TotalRevenue_curr', 'TotalRevenue_prev',
+        'ativos_totais_atual', 'ativos_totais_anterior', 'TotalAssets_curr', 'TotalAssets_prev',
+        'cfo_atual', 'CFO_curr', 'operatingCashflow',
+        'divida_lp_atual', 'divida_lp_anterior', 'divida_longo_prazo_atual', 'divida_longo_prazo_anterior', 'LongTermDebt_curr', 'LongTermDebt_prev',
+        'ativos_circulantes_atual', 'ativos_circulantes_anterior', 'CurrentAssets_curr', 'CurrentAssets_prev',
+        'passivos_circulantes_atual', 'passivos_circulantes_anterior', 'CurrentLiab_curr', 'CurrentLiab_prev',
+        'acoes_emitidas_atual', 'acoes_emitidas_anterior', 'sharesOutstanding', 'sharesOutstanding_prev',
+        'margem_bruta_atual', 'margem_bruta_anterior', 'GrossMargin_curr', 'GrossMargin_prev',
+        'lucro_bruto_atual', 'lucro_bruto_anterior', 'GrossProfit_curr', 'GrossProfit_prev'
+    ]
+    for col in piotroski_fields:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+    return df
+    
 def otimizar_portfolio_scipy(
     ativos,
     df_retornos_historicos,
