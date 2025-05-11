@@ -216,11 +216,6 @@ def display_comparative_table(carteiras_data):
     df_pesos_detalhados = pd.DataFrame(pesos_data_list).set_index('Nome')
     st.dataframe(df_pesos_detalhados.style.format("{:.2f}"))
     
-if mostrar_detalhes_piotroski:
-    detalhes_df = df_fundamental_completo['Piotroski_F_Detalhes'].apply(pd.Series)
-    detalhes_df['ticker'] = df_fundamental_completo['ticker'].values
-    st.dataframe(detalhes_df.set_index('ticker'))
-    
 if run_analysis:
     st.header("Resultados da Análise Avançada")
     ativos_carteira_lista_raw = [s.strip().upper() for s in ativos_input_str.split(',') if s.strip()]
@@ -272,7 +267,7 @@ if run_analysis:
             ]
             colunas_presentes = [c for c in colunas_desejadas if c in df_fundamental_completo.columns]
             st.dataframe(df_fundamental_completo[colunas_presentes])
-            if st.checkbox("Mostrar detalhes dos critérios do Piotroski F-Score"):
+            if mostrar_detalhes_piotroski:
                 detalhes_df = df_fundamental_completo['Piotroski_F_Detalhes'].apply(pd.Series)
                 detalhes_df['ticker'] = df_fundamental_completo['ticker'].values
                 st.dataframe(detalhes_df.set_index('ticker'))
