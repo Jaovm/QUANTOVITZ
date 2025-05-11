@@ -252,7 +252,9 @@ if run_analysis:
         df_fundamental_completo = obter_dados_fundamentalistas_detalhados_br(todos_ativos_analise)
         if not df_fundamental_completo.empty:
             df_fundamental_completo.set_index('ticker', inplace=True, drop=False)
-            df_fundamental_completo['Piotroski_F_Score'] = df_fundamental_completo.apply(calcular_piotroski_f_score_br, axis=1)
+            df_fundamental_completo["Piotroski_F_Score"], df_fundamental_completo["Piotroski_F_Detalhes"] = zip(
+                *df_fundamental_completo.apply(lambda row: calcular_piotroski_f_score_br(row, verbose=True), axis=1)
+            )
             df_fundamental_completo['Quant_Value_Score'] = calcular_value_composite_score(df_fundamental_completo, vc_metrics_config)
             df_fundamental_completo['Altman_Z_Score'] = df_fundamental_completo.apply(calcular_altman_z_score, axis=1)
             df_fundamental_completo['Beneish_M_Score'] = df_fundamental_completo.apply(calcular_beneish_m_score, axis=1)
@@ -265,6 +267,10 @@ if run_analysis:
             st.dataframe(df_fundamental_completo[colunas_presentes])
         else:
             st.warning("Não foi possível obter dados fundamentalistas. A otimização avançada pode ser limitada.")
+        if st.checkbox("Mostrar detalhes dos critérios do Piotroski F-Score"):
+            detalhes_df = df_fundamental_completo['Piotroski_F_Detalhes'].apply(pd.Series)
+            detalhes_df['ticker'] = df_fundamental_completo['ticker'].values
+            st.dataframe(detalhes_df.set_index('ticker'))
         ff_start_date = (pd.to_datetime(start_date_analise) - timedelta(days=30)).strftime("%Y-%m-%d")
         fama_french_factors_df = get_fama_french_factors(ff_start_date, end_date_analise)
         if fama_french_factors_df.empty:
