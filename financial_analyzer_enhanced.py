@@ -193,8 +193,7 @@ def calcular_piotroski_f_score_br(row, verbose=False):
         row: linha do dataframe de fundamentos (campos padronizados).
         verbose: se True, retorna score e dict detalhado.
     """
-
-    # Padronização dos campos para empresas brasileiras
+    # Padronização dos campos, com fallback
     lucro_liquido_atual = row.get('lucro_liquido_atual') or row.get('NI_curr') or row.get('NetIncome_curr')
     lucro_liquido_anterior = row.get('lucro_liquido_anterior') or row.get('NI_prev') or row.get('NetIncome_prev')
     receita_liquida_atual = row.get('receita_liquida_atual') or row.get('Revenue_curr') or row.get('TotalRevenue_curr')
@@ -234,16 +233,16 @@ def calcular_piotroski_f_score_br(row, verbose=False):
     # 1. Lucro Líquido positivo
     criterios['lucro_liquido_positivo'] = pd.notna(lucro_liquido_atual) and lucro_liquido_atual > 0
 
-    # 2. ROA crescente
+    # 2. CFO positivo
+    criterios['cfo_positivo'] = pd.notna(cfo_atual) and cfo_atual > 0
+
+    # 3. ROA crescente (lucro_liquido/ativos)
     try:
         roa_atual = lucro_liquido_atual / ativos_totais_atual if pd.notna(lucro_liquido_atual) and pd.notna(ativos_totais_atual) and ativos_totais_atual else np.nan
         roa_anterior = lucro_liquido_anterior / ativos_totais_anterior if pd.notna(lucro_liquido_anterior) and pd.notna(ativos_totais_anterior) and ativos_totais_anterior else np.nan
         criterios['roa_crescente'] = pd.notna(roa_atual) and pd.notna(roa_anterior) and roa_atual > roa_anterior
     except Exception:
         criterios['roa_crescente'] = False
-
-    # 3. CFO positivo
-    criterios['cfo_positivo'] = pd.notna(cfo_atual) and cfo_atual > 0
 
     # 4. CFO > Lucro Líquido
     criterios['cfo_maior_que_lucro'] = pd.notna(cfo_atual) and pd.notna(lucro_liquido_atual) and cfo_atual > lucro_liquido_atual
@@ -279,6 +278,7 @@ def calcular_piotroski_f_score_br(row, verbose=False):
     if verbose:
         return score, criterios
     return score
+    
 def calcular_altman_z_score(row):
     """
     Calcula o Altman Z-Score (versão para empresas não financeiras brasileiras).
