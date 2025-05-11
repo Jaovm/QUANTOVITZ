@@ -89,10 +89,7 @@ min_piotroski_score = st.sidebar.slider(
     help="Ativos com score abaixo deste valor podem ser excluídos da otimização avançada. 0 para não filtrar."
 )
 
-if st.checkbox("Mostrar detalhes dos critérios do Piotroski F-Score"):
-    detalhes_df = df_fundamental_completo['Piotroski_F_Detalhes'].apply(pd.Series)
-    detalhes_df['ticker'] = df_fundamental_completo['ticker'].values
-    st.dataframe(detalhes_df.set_index('ticker'))
+
             
 # 7. Restrições de Peso na Otimização
 st.sidebar.subheader("7. Restrições de Alocação (Otimização)")
@@ -486,3 +483,9 @@ if run_analysis:
     st.success("Análise concluída!")
 else:
     st.info("Ajuste os parâmetros na barra lateral e clique em 'Executar Análise Avançada'.")
+
+st.sidebar("critérios")
+    if st.checkbox("Mostrar detalhes dos critérios do Piotroski F-Score"):
+    detalhes_df = df_fundamental_completo['Piotroski_F_Detalhes'].apply(pd.Series)
+    detalhes_df['ticker'] = df_fundamental_completo['ticker'].values
+    st.dataframe(detalhes_df.set_index('ticker'))
