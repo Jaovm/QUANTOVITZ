@@ -187,98 +187,70 @@ def obter_dados_fundamentalistas_detalhados_br(ativos):
         df_fund[col] = pd.to_numeric(df_fund[col], errors='ignore')
     return df_fund
 
+
 def calcular_piotroski_f_score_br(row, verbose=False):
     """
-    Calcula o Piotroski F-Score e retorna score e detalhamento dos critérios para empresas brasileiras.
-    Parâmetros:
-        row: linha do dataframe de fundamentos (campos padronizados).
-        verbose: se True, retorna score e dict detalhado.
+    Calcula o Piotroski F-Score com validações robustas para empresas brasileiras.
     """
-    # Padronização dos campos, com fallback
-    lucro_liquido_atual = row.get('lucro_liquido_atual') or row.get('NI_curr') or row.get('NetIncome_curr')
-    lucro_liquido_anterior = row.get('lucro_liquido_anterior') or row.get('NI_prev') or row.get('NetIncome_prev')
-    receita_liquida_atual = row.get('receita_liquida_atual') or row.get('Revenue_curr') or row.get('TotalRevenue_curr')
-    receita_liquida_anterior = row.get('receita_liquida_anterior') or row.get('Revenue_prev') or row.get('TotalRevenue_prev')
-    ativos_totais_atual = row.get('ativos_totais_atual') or row.get('TotalAssets_curr')
-    ativos_totais_anterior = row.get('ativos_totais_anterior') or row.get('TotalAssets_prev')
-    cfo_atual = row.get('cfo_atual') or row.get('CFO_curr') or row.get('operatingCashflow')
-    divida_longo_prazo_atual = row.get('divida_lp_atual') or row.get('LongTermDebt_curr')
-    divida_longo_prazo_anterior = row.get('divida_lp_anterior') or row.get('LongTermDebt_prev')
-    ativos_circulantes_atual = row.get('ativos_circulantes_atual') or row.get('CurrentAssets_curr')
-    passivos_circulantes_atual = row.get('passivos_circulantes_atual') or row.get('CurrentLiab_curr')
-    ativos_circulantes_anterior = row.get('ativos_circulantes_anterior') or row.get('CurrentAssets_prev')
-    passivos_circulantes_anterior = row.get('passivos_circulantes_anterior') or row.get('CurrentLiab_prev')
-    acoes_emitidas_atual = row.get('acoes_emitidas_atual') or row.get('sharesOutstanding')
-    acoes_emitidas_anterior = row.get('acoes_emitidas_anterior') or row.get('sharesOutstanding_prev')
+    # Extração segura de campos
+    lucro_liquido_atual = pd.to_numeric(row.get('lucro_liquido_atual'), errors='coerce')
+    lucro_liquido_anterior = pd.to_numeric(row.get('lucro_liquido_anterior'), errors='coerce')
+    receita_liquida_atual = pd.to_numeric(row.get('receita_liquida_atual'), errors='coerce')
+    receita_liquida_anterior = pd.to_numeric(row.get('receita_liquida_anterior'), errors='coerce')
+    ativos_totais_atual = pd.to_numeric(row.get('ativos_totais_atual'), errors='coerce')
+    ativos_totais_anterior = pd.to_numeric(row.get('ativos_totais_anterior'), errors='coerce')
+    cfo_atual = pd.to_numeric(row.get('cfo_atual'), errors='coerce')
+    divida_lp_atual = pd.to_numeric(row.get('divida_lp_atual'), errors='coerce')
+    divida_lp_anterior = pd.to_numeric(row.get('divida_lp_anterior'), errors='coerce')
+    ativos_circulantes_atual = pd.to_numeric(row.get('ativos_circulantes_atual'), errors='coerce')
+    passivos_circulantes_atual = pd.to_numeric(row.get('passivos_circulantes_atual'), errors='coerce')
+    ativos_circulantes_anterior = pd.to_numeric(row.get('ativos_circulantes_anterior'), errors='coerce')
+    passivos_circulantes_anterior = pd.to_numeric(row.get('passivos_circulantes_anterior'), errors='coerce')
+    acoes_emitidas_atual = pd.to_numeric(row.get('acoes_emitidas_atual'), errors='coerce')
+    acoes_emitidas_anterior = pd.to_numeric(row.get('acoes_emitidas_anterior'), errors='coerce')
+    lucro_bruto_atual = pd.to_numeric(row.get('lucro_bruto_atual'), errors='coerce')
+    lucro_bruto_anterior = pd.to_numeric(row.get('lucro_bruto_anterior'), errors='coerce')
 
-    # Lucros e margens
-    margem_bruta_atual = row.get('margem_bruta_atual') or row.get('GrossMargin_curr')
-    margem_bruta_anterior = row.get('margem_bruta_anterior') or row.get('GrossMargin_prev')
-    lucro_bruto_atual = row.get('lucro_bruto_atual') or row.get('GrossProfit_curr')
-    lucro_bruto_anterior = row.get('lucro_bruto_anterior') or row.get('GrossProfit_prev')
-    # Se não vier margem, calcula
-    if pd.notna(lucro_bruto_atual) and pd.notna(receita_liquida_atual) and receita_liquida_atual:
-        margem_bruta_atual = lucro_bruto_atual / receita_liquida_atual
-    if pd.notna(lucro_bruto_anterior) and pd.notna(receita_liquida_anterior) and receita_liquida_anterior:
-        margem_bruta_anterior = lucro_bruto_anterior / receita_liquida_anterior
+    # Margens brutas calculadas, se necessário
+    margem_bruta_atual = lucro_bruto_atual / receita_liquida_atual if pd.notna(lucro_bruto_atual) and pd.notna(receita_liquida_atual) and receita_liquida_atual != 0 else np.nan
+    margem_bruta_anterior = lucro_bruto_anterior / receita_liquida_anterior if pd.notna(lucro_bruto_anterior) and pd.notna(receita_liquida_anterior) and receita_liquida_anterior != 0 else np.nan
 
     # Rotatividade de ativos
+    rot_ativos_atual = receita_liquida_atual / ativos_totais_atual if pd.notna(receita_liquida_atual) and pd.notna(ativos_totais_atual) and ativos_totais_atual != 0 else np.nan
+    rot_ativos_anterior = receita_liquida_anterior / ativos_totais_anterior if pd.notna(receita_liquida_anterior) and pd.notna(ativos_totais_anterior) and ativos_totais_anterior != 0 else np.nan
+
+    # ROA
+    roa_atual = lucro_liquido_atual / ativos_totais_atual if pd.notna(lucro_liquido_atual) and pd.notna(ativos_totais_atual) and ativos_totais_atual != 0 else np.nan
+    roa_anterior = lucro_liquido_anterior / ativos_totais_anterior if pd.notna(lucro_liquido_anterior) and pd.notna(ativos_totais_anterior) and ativos_totais_anterior != 0 else np.nan
+
+    # Liquidez Corrente
     try:
-        rot_ativos_atual = receita_liquida_atual / ativos_totais_atual if pd.notna(receita_liquida_atual) and pd.notna(ativos_totais_atual) and ativos_totais_atual else np.nan
-        rot_ativos_anterior = receita_liquida_anterior / ativos_totais_anterior if pd.notna(receita_liquida_anterior) and pd.notna(ativos_totais_anterior) and ativos_totais_anterior else np.nan
-    except Exception:
-        rot_ativos_atual = rot_ativos_anterior = np.nan
+        if pd.notna(ativos_circulantes_atual) and pd.notna(passivos_circulantes_atual) and passivos_circulantes_atual != 0:
+            liquidez_corrente_atual = ativos_circulantes_atual / passivos_circulantes_atual
+        else:
+            liquidez_corrente_atual = np.nan
+        if pd.notna(ativos_circulantes_anterior) and pd.notna(passivos_circulantes_anterior) and passivos_circulantes_anterior != 0:
+            liquidez_corrente_anterior = ativos_circulantes_anterior / passivos_circulantes_anterior
+        else:
+            liquidez_corrente_anterior = np.nan
+    except:
+        liquidez_corrente_atual = liquidez_corrente_anterior = np.nan
 
-    criterios = {}
-
-    # 1. Lucro Líquido positivo
-    criterios['lucro_liquido_positivo'] = pd.notna(lucro_liquido_atual) and lucro_liquido_atual > 0
-
-    # 2. CFO positivo
-    criterios['cfo_positivo'] = pd.notna(cfo_atual) and cfo_atual > 0
-
-    # 3. ROA crescente (lucro_liquido/ativos)
-    try:
-        roa_atual = lucro_liquido_atual / ativos_totais_atual if pd.notna(lucro_liquido_atual) and pd.notna(ativos_totais_atual) and ativos_totais_atual else np.nan
-        roa_anterior = lucro_liquido_anterior / ativos_totais_anterior if pd.notna(lucro_liquido_anterior) and pd.notna(ativos_totais_anterior) and ativos_totais_anterior else np.nan
-        criterios['roa_crescente'] = pd.notna(roa_atual) and pd.notna(roa_anterior) and roa_atual > roa_anterior
-    except Exception:
-        criterios['roa_crescente'] = False
-
-    # 4. CFO > Lucro Líquido
-    criterios['cfo_maior_que_lucro'] = pd.notna(cfo_atual) and pd.notna(lucro_liquido_atual) and cfo_atual > lucro_liquido_atual
-
-    # 5. Queda da dívida de longo prazo
-    criterios['queda_divida_lp'] = (
-        pd.notna(divida_longo_prazo_atual) and pd.notna(divida_longo_prazo_anterior)
-        and divida_longo_prazo_atual < divida_longo_prazo_anterior
-    )
-
-    # 6. Aumento do índice de liquidez corrente
-    try:
-        liquidez_corrente_atual = ativos_circulantes_atual / passivos_circulantes_atual if pd.notna(ativos_circulantes_atual) and pd.notna(passivos_circulantes_atual) and passivos_circulantes_atual else np.nan
-        liquidez_corrente_anterior = ativos_circulantes_anterior / passivos_circulantes_anterior if pd.notna(ativos_circulantes_anterior) and pd.notna(passivos_circulantes_anterior) and passivos_circulantes_anterior else np.nan
-        criterios['aumento_liquidez_corrente'] = pd.notna(liquidez_corrente_atual) and pd.notna(liquidez_corrente_anterior) and liquidez_corrente_atual > liquidez_corrente_anterior
-    except Exception:
-        criterios['aumento_liquidez_corrente'] = False
-
-    # 7. Aumento da margem bruta
-    criterios['aumento_margem_bruta'] = pd.notna(margem_bruta_atual) and pd.notna(margem_bruta_anterior) and margem_bruta_atual > margem_bruta_anterior
-
-    # 8. Aumento da rotatividade de ativos
-    criterios['aumento_rotatividade_ativos'] = pd.notna(rot_ativos_atual) and pd.notna(rot_ativos_anterior) and rot_ativos_atual > rot_ativos_anterior
-
-    # 9. Não emissão de ações
-    criterios['nao_emitiu_acoes'] = (
-        pd.notna(acoes_emitidas_atual)
-        and pd.notna(acoes_emitidas_anterior)
-        and acoes_emitidas_atual <= acoes_emitidas_anterior
-    )
+    # Critérios
+    criterios = {
+        'lucro_liquido_positivo': pd.notna(lucro_liquido_atual) and lucro_liquido_atual > 0,
+        'cfo_positivo': pd.notna(cfo_atual) and cfo_atual > 0,
+        'roa_crescente': pd.notna(roa_atual) and pd.notna(roa_anterior) and roa_atual > roa_anterior,
+        'cfo_maior_que_lucro': pd.notna(cfo_atual) and pd.notna(lucro_liquido_atual) and cfo_atual > lucro_liquido_atual,
+        'queda_divida_lp': pd.notna(divida_lp_atual) and pd.notna(divida_lp_anterior) and divida_lp_atual < divida_lp_anterior,
+        'aumento_liquidez_corrente': pd.notna(liquidez_corrente_atual) and pd.notna(liquidez_corrente_anterior) and liquidez_corrente_atual > liquidez_corrente_anterior,
+        'aumento_margem_bruta': pd.notna(margem_bruta_atual) and pd.notna(margem_bruta_anterior) and margem_bruta_atual > margem_bruta_anterior,
+        'aumento_rotatividade_ativos': pd.notna(rot_ativos_atual) and pd.notna(rot_ativos_anterior) and rot_ativos_atual > rot_ativos_anterior,
+        'nao_emitiu_acoes': pd.notna(acoes_emitidas_atual) and pd.notna(acoes_emitidas_anterior) and acoes_emitidas_atual <= acoes_emitidas_anterior
+    }
 
     score = sum(criterios.values())
-    if verbose:
-        return score, criterios
-    return score
+    return (score, criterios) if verbose else score
     
 def calcular_altman_z_score(row):
     """
